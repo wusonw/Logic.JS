@@ -1,12 +1,13 @@
 {
-  "name": "@logic/core",
+  "name": "@logic.js/core",
   "version": "1.0.0",
   "description": "Core module for Logic.JS node editor",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc -w"
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview"
   },
   "keywords": [
     "node-editor",
@@ -16,6 +17,11 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0",
+    "vite-plugin-dts": "^3.7.0"
+  },
+  "dependencies": {
+    "@types/node": "^22.15.30"
   }
 }
