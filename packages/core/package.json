@@ -1,0 +1,21 @@
+{
+  "name": "@logic/core",
+  "version": "1.0.0",
+  "description": "Core module for Logic.JS node editor",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w"
+  },
+  "keywords": [
+    "node-editor",
+    "graph",
+    "logic"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
