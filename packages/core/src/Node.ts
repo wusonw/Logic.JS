@@ -26,11 +26,11 @@ export abstract class Node {
     this.outputs = new Map();
 
     data.inputs?.forEach(input => {
-      this.addInput(input);
+      this.addInput({ ...input, nodeId: this.id });
     });
 
     data.outputs?.forEach(output => {
-      this.addOutput(output);
+      this.addOutput({ ...output, nodeId: this.id });
     });
   }
 
