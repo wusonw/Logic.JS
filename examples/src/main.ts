@@ -12,7 +12,7 @@ const editor = new Editor({
 })
 
 // 创建渲染器
-const renderer = new SvgRenderer(app, editor)
+new SvgRenderer(app, editor)
 
 // 添加一些示例节点
 editor.addNodeToGraph({
@@ -43,10 +43,50 @@ editor.addNodeToGraph({
   outputs: []
 })
 
-// 添加连接
-editor.connectPorts('output1', 'input1')
+editor.addNodeToGraph({
+  id: 'node3',
+  name: '处理节点1',
+  type: 'process',
+  position: { x: 200, y: 200 },
+  inputs: [{
+    id: 'input2',
+    name: '输入',
+    type: 'number',
+    nodeId: 'node3'
+  }],
+  outputs: [{
+    id: 'output2',
+    name: '输出',
+    type: 'number',
+    nodeId: 'node3'
+  }]
+})
 
-let nodeCount = 2;
+editor.addNodeToGraph({
+  id: 'node4',
+  name: '处理节点2',
+  type: 'process',
+  position: { x: 400, y: 200 },
+  inputs: [{
+    id: 'input3',
+    name: '输入',
+    type: 'number',
+    nodeId: 'node4'
+  }],
+  outputs: [{
+    id: 'output3',
+    name: '输出',
+    type: 'number',
+    nodeId: 'node4'
+  }]
+})
+
+// 添加连接
+editor.connectPorts('output1', 'input2')
+editor.connectPorts('output2', 'input3')
+editor.connectPorts('output3', 'input1')
+
+let nodeCount = 4;
 
 // 添加节点按钮
 const addBtn = document.getElementById('add-node')!;

@@ -182,25 +182,51 @@ export class SvgRenderer {
     const targetElement = this.portElements.get(targetPort.getId());
 
     if (sourceElement && targetElement) {
-      const sourceRect = sourceElement.getBoundingClientRect();
-      const targetRect = targetElement.getBoundingClientRect();
-      const svgRect = this.svg.getBoundingClientRect();
+      const sourceNode = this.nodeElements.get(sourcePort.getNodeId());
+      const targetNode = this.nodeElements.get(targetPort.getNodeId());
 
-      // 计算相对位置
-      const x1 = sourceRect.left + sourceRect.width / 2 - svgRect.left;
-      const y1 = sourceRect.top + sourceRect.height / 2 - svgRect.top;
-      const x2 = targetRect.left + targetRect.width / 2 - svgRect.left;
-      const y2 = targetRect.top + targetRect.height / 2 - svgRect.top;
+      if (sourceNode && targetNode) {
+        const sourceTransform = sourceNode.getAttribute('transform');
+        const targetTransform = targetNode.getAttribute('transform');
 
-      // 创建贝塞尔曲线路径
-      const dx = x2 - x1;
-      const dy = y2 - y1;
-      const path = `M ${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`;
+        // 解析 transform 属性获取节点位置
+        const sourceMatch = sourceTransform?.match(/translate\((\d+),\s*(\d+)\)/);
+        const targetMatch = targetTransform?.match(/translate\((\d+),\s*(\d+)\)/);
 
-      element.setAttribute('d', path);
-      element.setAttribute('stroke', '#666');
-      element.setAttribute('stroke-width', '2');
-      element.setAttribute('fill', 'none');
+        if (sourceMatch && targetMatch) {
+          const sourceX = parseInt(sourceMatch[1]);
+          const sourceY = parseInt(sourceMatch[2]);
+          const targetX = parseInt(targetMatch[1]);
+          const targetY = parseInt(targetMatch[2]);
+
+          // 获取端口的相对位置
+          const sourcePortElement = sourceElement.querySelector('circle');
+          const targetPortElement = targetElement.querySelector('circle');
+
+          if (sourcePortElement && targetPortElement) {
+            const sourcePortX = parseInt(sourcePortElement.getAttribute('cx') || '0');
+            const sourcePortY = parseInt(sourcePortElement.getAttribute('cy') || '0');
+            const targetPortX = parseInt(targetPortElement.getAttribute('cx') || '0');
+            const targetPortY = parseInt(targetPortElement.getAttribute('cy') || '0');
+
+            // 计算端口的绝对位置
+            const x1 = sourceX + sourcePortX;
+            const y1 = sourceY + sourcePortY;
+            const x2 = targetX + targetPortX;
+            const y2 = targetY + targetPortY;
+
+            // 创建贝塞尔曲线路径
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const path = `M ${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`;
+
+            element.setAttribute('d', path);
+            element.setAttribute('stroke', '#666');
+            element.setAttribute('stroke-width', '2');
+            element.setAttribute('fill', 'none');
+          }
+        }
+      }
     }
 
     return element;
@@ -209,6 +235,26 @@ export class SvgRenderer {
   private removeNode(nodeId: string): void {
     const nodeElement = this.nodeElements.get(nodeId);
     if (nodeElement) {
+      // 删除节点相关的所有端口元素
+      const node = this.editor.getNode(nodeId);
+      if (node) {
+        node.getInputs().forEach(port => {
+          const portElement = this.portElements.get(port.getId());
+          if (portElement) {
+            portElement.remove();
+            this.portElements.delete(port.getId());
+          }
+        });
+        node.getOutputs().forEach(port => {
+          const portElement = this.portElements.get(port.getId());
+          if (portElement) {
+            portElement.remove();
+            this.portElements.delete(port.getId());
+          }
+        });
+      }
+
+      // 删除节点元素
       nodeElement.remove();
       this.nodeElements.delete(nodeId);
     }
