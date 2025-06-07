@@ -8,6 +8,22 @@ importers:
 
   .: {}
 
+  examples:
+    dependencies:
+      '@logic.js/core':
+        specifier: workspace:*
+        version: link:../packages/core
+      '@logic.js/editor':
+        specifier: workspace:*
+        version: link:../packages/editor
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.8.3
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.19(@types/node@22.15.30)
+
   packages/core:
     dependencies:
       '@types/node':
