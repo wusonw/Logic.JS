@@ -176,7 +176,7 @@ export class Editor extends Graph {
     this.emitter.emit('port:disconnected', edgeId);
   }
 
-  private findPort(portId: string): Port | undefined {
+  public findPort(portId: string): Port | undefined {
     for (const node of this.nodes.values()) {
       const input = node.getInput(portId);
       if (input) return input;

@@ -19,6 +19,10 @@ export class SvgRenderer {
   private nodeElements: Map<string, SVGElement>;
   private edgeElements: Map<string, SVGElement>;
   private portElements: Map<string, SVGElement>;
+  private isConnecting: boolean = false;
+  private connectStartPortId: string | null = null;
+  private connectStartType: 'input' | 'output' | null = null;
+  private tempLine: SVGPathElement | null = null;
 
   constructor(container: HTMLElement, editor: Editor) {
     this.editor = editor;
@@ -84,6 +88,9 @@ export class SvgRenderer {
     this.svg.addEventListener('mousemove', this.handleMouseMove.bind(this));
     this.svg.addEventListener('mouseup', this.handleMouseUp.bind(this));
     this.svg.addEventListener('mouseleave', this.handleMouseUp.bind(this));
+    // 端口上的事件
+    this.svg.addEventListener('mousedown', this.handlePortMouseDown.bind(this), true);
+    this.svg.addEventListener('mouseup', this.handlePortMouseUp.bind(this), true);
   }
 
   private handleMouseDown(event: MouseEvent): void {
@@ -99,14 +106,93 @@ export class SvgRenderer {
     }
   }
 
+  private handlePortMouseDown(event: MouseEvent): void {
+    const portElement = (event.target as SVGElement).closest('g');
+    if (!portElement) return;
+    // 查找端口ID
+    const portId = Array.from(this.portElements.entries()).find(([_, el]) => el === portElement)?.[0];
+    if (!portId) return;
+    // 判断端口类型
+    const isOutput = portElement.querySelector('circle')?.getAttribute('fill') === '#2196F3';
+    const type: 'input' | 'output' = isOutput ? 'output' : 'input';
+    // 只允许从输出端口开始连线
+    if (type !== 'output') return;
+    this.isConnecting = true;
+    this.connectStartPortId = portId;
+    this.connectStartType = type;
+    // 创建临时连线
+    this.tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    this.tempLine.setAttribute('stroke', '#888');
+    this.tempLine.setAttribute('stroke-width', '2');
+    this.tempLine.setAttribute('fill', 'none');
+    this.tempLine.setAttribute('pointer-events', 'none');
+    this.svg.appendChild(this.tempLine);
+    event.stopPropagation();
+  }
+
   private handleMouseMove(event: MouseEvent): void {
-    if (this.editor.isNodeDragging()) {
-      this.editor.handleDrag(event.clientX, event.clientY);
+    if (this.isConnecting && this.connectStartPortId && this.tempLine) {
+      // 获取起点位置
+      const startPortElement = this.portElements.get(this.connectStartPortId);
+      if (!startPortElement) return;
+      // 获取起点绝对坐标
+      const startNode = this.editor.getNode((this.editor.findPort as any)(this.connectStartPortId)?.getNodeId());
+      if (!startNode) return;
+      const startPos = this.getPortAbsolutePosition(startNode.getPosition(), startPortElement, 'output');
+      // 终点为鼠标位置
+      const svgRect = this.svg.getBoundingClientRect();
+      const endX = event.clientX - svgRect.left;
+      const endY = event.clientY - svgRect.top;
+      // 贝塞尔曲线
+      const controlPoint1X = startPos.x + (endX - startPos.x) * 0.5;
+      const controlPoint2X = endX - (endX - startPos.x) * 0.5;
+      const path = `M ${startPos.x} ${startPos.y} C ${controlPoint1X} ${startPos.y}, ${controlPoint2X} ${endY}, ${endX} ${endY}`;
+      this.tempLine.setAttribute('d', path);
+    } else {
+      // 拖拽节点逻辑
+      if (this.editor.isNodeDragging()) {
+        this.editor.handleDrag(event.clientX, event.clientY);
+      }
     }
   }
 
-  private handleMouseUp(): void {
+  private handlePortMouseUp(event: MouseEvent): void {
+    if (!this.isConnecting || !this.connectStartPortId) return;
+    const portElement = (event.target as SVGElement).closest('g');
+    if (!portElement) return;
+    // 查找端口ID
+    const portId = Array.from(this.portElements.entries()).find(([_, el]) => el === portElement)?.[0];
+    if (!portId) return;
+    // 判断端口类型
+    const isInput = portElement.querySelector('circle')?.getAttribute('fill') === '#4CAF50';
+    const type: 'input' | 'output' = isInput ? 'input' : 'output';
+    // 只允许输出连到输入
+    if (type !== 'input' || portId === this.connectStartPortId) {
+      this.cancelTempLine();
+      return;
+    }
+    // 调用 editor 连接端口
+    this.editor.connectPorts(this.connectStartPortId, portId);
+    this.cancelTempLine();
+    event.stopPropagation();
+  }
+
+  private handleMouseUp(event: MouseEvent): void {
+    if (this.isConnecting) {
+      this.cancelTempLine();
+      return;
+    }
     this.editor.endDrag();
+  }
+
+  private cancelTempLine(): void {
+    this.isConnecting = false;
+    this.connectStartPortId = null;
+    this.connectStartType = null;
+    if (this.tempLine) {
+      this.tempLine.remove();
+      this.tempLine = null;
+    }
   }
 
   private render(): void {
