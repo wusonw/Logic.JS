@@ -11,7 +11,9 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@logic.js/core": "workspace:*"
+    "@logic.js/core": "workspace:*",
+    "@types/lodash-es": "^4.17.12",
+    "lodash-es": "^4.17.21"
   },
   "devDependencies": {
     "typescript": "^5.0.0",

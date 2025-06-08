@@ -1,5 +1,8 @@
 import { Editor } from './Editor';
 import { Node, Edge, Port } from '@logic.js/core';
+import { throttle } from 'lodash-es';
+import { PerformanceMonitor } from './performance/PerformanceMonitor';
+import { VirtualNode } from './vdom/VirtualNode';
 
 export interface RendererEvents {
   'node:added': (node: Node) => void;
@@ -19,14 +22,17 @@ export class SvgRenderer {
   private portElements: Map<string, SVGElement>;
   private isConnecting: boolean = false;
   private connectStartPortId: string | null = null;
-  private connectStartType: 'input' | 'output' | null = null;
   private tempLine: SVGPathElement | null = null;
+  private updateQueue: Set<string> = new Set();
+  private isUpdating: boolean = false;
+  private performanceMonitor: PerformanceMonitor;
 
   constructor(container: HTMLElement, editor: Editor) {
     this.editor = editor;
     this.nodeElements = new Map();
     this.edgeElements = new Map();
     this.portElements = new Map();
+    this.performanceMonitor = PerformanceMonitor.getInstance();
 
     // 创建SVG元素
     this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -117,7 +123,6 @@ export class SvgRenderer {
     if (type !== 'output') return;
     this.isConnecting = true;
     this.connectStartPortId = portId;
-    this.connectStartType = type;
     // 创建临时连线
     this.tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     this.tempLine.setAttribute('stroke', '#888');
@@ -128,31 +133,32 @@ export class SvgRenderer {
     event.stopPropagation();
   }
 
-  private handleMouseMove(event: MouseEvent): void {
+  private handleMouseMove = throttle((event: MouseEvent) => {
+    this.performanceMonitor.start('mouseMove');
+
     if (this.isConnecting && this.connectStartPortId && this.tempLine) {
-      // 获取起点位置
       const startPortElement = this.portElements.get(this.connectStartPortId);
       if (!startPortElement) return;
-      // 获取起点绝对坐标
+
       const startNode = this.editor.getNode((this.editor.findPort as any)(this.connectStartPortId)?.getNodeId());
       if (!startNode) return;
+
       const startPos = this.getPortAbsolutePosition(startNode.getPosition(), startPortElement, 'output');
-      // 终点为鼠标位置
       const svgRect = this.svg.getBoundingClientRect();
       const endX = event.clientX - svgRect.left;
       const endY = event.clientY - svgRect.top;
-      // 贝塞尔曲线
+
+      // 同步计算临时路径
       const controlPoint1X = startPos.x + (endX - startPos.x) * 0.5;
       const controlPoint2X = endX - (endX - startPos.x) * 0.5;
       const path = `M ${startPos.x} ${startPos.y} C ${controlPoint1X} ${startPos.y}, ${controlPoint2X} ${endY}, ${endX} ${endY}`;
       this.tempLine.setAttribute('d', path);
-    } else {
-      // 拖拽节点逻辑
-      if (this.editor.isNodeDragging()) {
-        this.editor.handleDrag(event.clientX, event.clientY);
-      }
+    } else if (this.editor.isNodeDragging()) {
+      this.editor.handleDrag(event.clientX, event.clientY);
     }
-  }
+
+    this.performanceMonitor.end('mouseMove');
+  }, 16);
 
   private handlePortMouseUp(event: MouseEvent): void {
     if (!this.isConnecting || !this.connectStartPortId) return;
@@ -186,7 +192,6 @@ export class SvgRenderer {
   private cancelTempLine(): void {
     this.isConnecting = false;
     this.connectStartPortId = null;
-    this.connectStartType = null;
     if (this.tempLine) {
       this.tempLine.remove();
       this.tempLine = null;
@@ -246,9 +251,9 @@ export class SvgRenderer {
   }
 
   private createNodeElement(node: Node): SVGElement {
+    const nodeElement = new VirtualNode('g', node.getId());
     const { x, y } = node.getPosition();
-    const element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    element.setAttribute('transform', `translate(${x}, ${y})`);
+    nodeElement.setAttribute('transform', `translate(${x}, ${y})`);
 
     // 计算节点高度：端口数*间距+上下边距，最小60
     const portCount = Math.max(node.getInputs().length, node.getOutputs().length);
@@ -258,57 +263,64 @@ export class SvgRenderer {
     const height = Math.max(minHeight, portCount * portSpacing + padding);
 
     // 创建节点主体
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    const rect = new VirtualNode('rect', `${node.getId()}-rect`);
     rect.setAttribute('width', '100');
     rect.setAttribute('height', height.toString());
     rect.setAttribute('rx', '5');
     rect.setAttribute('fill', '#fff');
     rect.setAttribute('stroke', '#333');
     rect.setAttribute('stroke-width', '2');
-    element.appendChild(rect);
+    nodeElement.appendChild(rect);
 
     // 创建节点标题
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const text = new VirtualNode('text', `${node.getId()}-text`);
     text.setAttribute('x', '50');
     text.setAttribute('y', (height / 2).toString());
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
     text.textContent = node.getName();
-    element.appendChild(text);
+    nodeElement.appendChild(text);
 
-    return element;
+    nodeElement.update();
+    return nodeElement.getElement() as SVGElement;
   }
 
   private createPortElement(port: Port, type: 'input' | 'output', y: number): SVGElement {
-    const element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const portElement = new VirtualNode('g', port.getId());
+
     // 创建端口圆点
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    const circle = new VirtualNode('circle', `${port.getId()}-circle`);
     circle.setAttribute('r', '5');
     circle.setAttribute('fill', type === 'input' ? '#4CAF50' : '#2196F3');
     circle.setAttribute('stroke', '#333');
     circle.setAttribute('stroke-width', '1');
+
     // 端口在节点左侧或右侧
     const x = type === 'input' ? 0 : 100;
     circle.setAttribute('cx', x.toString());
-    circle.setAttribute('cy', '0'); // y 由g的transform控制
-    element.appendChild(circle);
+    circle.setAttribute('cy', '0');
+    portElement.appendChild(circle);
+
     // 创建端口标签
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const text = new VirtualNode('text', `${port.getId()}-text`);
     text.setAttribute('x', type === 'input' ? '10' : '90');
     text.setAttribute('y', '5');
     text.setAttribute('text-anchor', type === 'input' ? 'start' : 'end');
     text.textContent = port.getName();
-    element.appendChild(text);
-    // 设置g的transform，y为传入参数
-    element.setAttribute('transform', `translate(0, ${y})`);
-    return element;
+    portElement.appendChild(text);
+
+    // 设置g的transform
+    portElement.setAttribute('transform', `translate(0, ${y})`);
+
+    portElement.update();
+    return portElement.getElement() as SVGElement;
   }
 
   private createEdgeElement(edge: Edge): SVGElement {
-    const element = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    element.setAttribute('fill', 'none');
-    element.setAttribute('stroke', '#999');
-    element.setAttribute('stroke-width', '2');
+    const edgeElement = new VirtualNode('path', edge.getId());
+    edgeElement.setAttribute('fill', 'none');
+    edgeElement.setAttribute('stroke', '#999');
+    edgeElement.setAttribute('stroke-width', '2');
 
     const sourcePort = edge.getSourcePort();
     const targetPort = edge.getTargetPort();
@@ -324,15 +336,16 @@ export class SvgRenderer {
         const targetX = targetNodePos.x;
         const targetY = targetNodePos.y + 30;
 
+        // 同步计算初始路径
         const controlPoint1X = sourceX + (targetX - sourceX) * 0.5;
         const controlPoint2X = targetX - (targetX - sourceX) * 0.5;
-
         const path = `M ${sourceX} ${sourceY} C ${controlPoint1X} ${sourceY}, ${controlPoint2X} ${targetY}, ${targetX} ${targetY}`;
-        element.setAttribute('d', path);
+        edgeElement.setAttribute('d', path);
       }
     }
 
-    return element;
+    edgeElement.update();
+    return edgeElement.getElement() as SVGElement;
   }
 
   private removeNode(nodeId: string): void {
@@ -383,19 +396,74 @@ export class SvgRenderer {
   }
 
   private updateConnectedEdges(node: Node): void {
-    // 获取节点的所有端口
-    const nodePorts = [...node.getInputs(), ...node.getOutputs()];
+    this.performanceMonitor.start('updateConnectedEdges');
 
-    // 遍历所有边，检查是否与当前节点相关
-    for (const edge of this.editor.getEdges()) {
-      const sourcePort = edge.getSourcePort();
-      const targetPort = edge.getTargetPort();
+    requestAnimationFrame(() => {
+      const nodePorts = [...node.getInputs(), ...node.getOutputs()];
+      const edgesToUpdate = this.editor.getEdges().filter(edge => {
+        const sourcePort = edge.getSourcePort();
+        const targetPort = edge.getTargetPort();
+        return nodePorts.some(port =>
+          port.getId() === sourcePort.getId() ||
+          port.getId() === targetPort.getId()
+        );
+      });
 
-      // 如果边的源端口或目标端口属于当前节点，则更新该边
-      if (nodePorts.some(port => port.getId() === sourcePort.getId() || port.getId() === targetPort.getId())) {
-        this.updateEdge(edge);
-      }
-    }
+      edgesToUpdate.forEach(edge => {
+        this.updateQueue.add(edge.getId());
+      });
+
+      this.processUpdateQueue();
+    });
+
+    this.performanceMonitor.end('updateConnectedEdges');
+  }
+
+  private processUpdateQueue() {
+    if (this.isUpdating) return;
+    this.isUpdating = true;
+
+    requestAnimationFrame(() => {
+      this.updateQueue.forEach(edgeId => {
+        const edge = this.editor.getEdges().find(e => e.getId() === edgeId);
+        if (edge) {
+          this.updateEdge(edge);
+        }
+      });
+
+      this.updateQueue.clear();
+      this.isUpdating = false;
+    });
+  }
+
+  private updateEdge(edge: Edge): void {
+    this.performanceMonitor.start('updateEdge');
+
+    const edgeElement = this.edgeElements.get(edge.getId());
+    if (!edgeElement) return;
+
+    const sourcePort = edge.getSourcePort();
+    const targetPort = edge.getTargetPort();
+    if (!sourcePort || !targetPort) return;
+
+    const sourceNode = this.editor.getNode(sourcePort.getNodeId());
+    const targetNode = this.editor.getNode(targetPort.getNodeId());
+    if (!sourceNode || !targetNode) return;
+
+    const sourcePortElement = this.portElements.get(sourcePort.getId());
+    const targetPortElement = this.portElements.get(targetPort.getId());
+    if (!sourcePortElement || !targetPortElement) return;
+
+    const sourcePos = this.getPortAbsolutePosition(sourceNode.getPosition(), sourcePortElement, 'output');
+    const targetPos = this.getPortAbsolutePosition(targetNode.getPosition(), targetPortElement, 'input');
+
+    // 同步计算路径
+    const controlPoint1X = sourcePos.x + (targetPos.x - sourcePos.x) * 0.5;
+    const controlPoint2X = targetPos.x - (targetPos.x - sourcePos.x) * 0.5;
+    const path = `M ${sourcePos.x} ${sourcePos.y} C ${controlPoint1X} ${sourcePos.y}, ${controlPoint2X} ${targetPos.y}, ${targetPos.x} ${targetPos.y}`;
+    edgeElement.setAttribute('d', path);
+
+    this.performanceMonitor.end('updateEdge');
   }
 
   private getPortAbsolutePosition(nodePos: { x: number, y: number }, portElement: SVGElement, type: 'input' | 'output'): { x: number, y: number } {
@@ -416,30 +484,6 @@ export class SvgRenderer {
     };
   }
 
-  private updateEdge(edge: Edge): void {
-    const edgeElement = this.edgeElements.get(edge.getId());
-    if (!edgeElement) return;
-    const sourcePort = edge.getSourcePort();
-    const targetPort = edge.getTargetPort();
-    if (!sourcePort || !targetPort) return;
-    // 获取源节点和目标节点
-    const sourceNode = this.editor.getNode(sourcePort.getNodeId());
-    const targetNode = this.editor.getNode(targetPort.getNodeId());
-    if (!sourceNode || !targetNode) return;
-    // 获取源端口和目标端口的元素
-    const sourcePortElement = this.portElements.get(sourcePort.getId());
-    const targetPortElement = this.portElements.get(targetPort.getId());
-    if (!sourcePortElement || !targetPortElement) return;
-    // 计算端口的绝对位置
-    const sourcePos = this.getPortAbsolutePosition(sourceNode.getPosition(), sourcePortElement, 'output');
-    const targetPos = this.getPortAbsolutePosition(targetNode.getPosition(), targetPortElement, 'input');
-    // 创建贝塞尔曲线路径
-    const controlPoint1X = sourcePos.x + (targetPos.x - sourcePos.x) * 0.5;
-    const controlPoint2X = targetPos.x - (targetPos.x - sourcePos.x) * 0.5;
-    const path = `M ${sourcePos.x} ${sourcePos.y} C ${controlPoint1X} ${sourcePos.y}, ${controlPoint2X} ${targetPos.y}, ${targetPos.x} ${targetPos.y}`;
-    edgeElement.setAttribute('d', path);
-  }
-
   public update(): void {
     // 清除现有元素
     this.nodeElements.forEach(element => element.remove());
@@ -452,5 +496,17 @@ export class SvgRenderer {
 
     // 重新渲染
     this.render();
+  }
+
+  public getPerformanceMetrics() {
+    return this.performanceMonitor.getMetrics();
+  }
+
+  public destroy() {
+    // 清理资源
+    this.nodeElements.clear();
+    this.edgeElements.clear();
+    this.portElements.clear();
+    this.updateQueue.clear();
   }
 } 
