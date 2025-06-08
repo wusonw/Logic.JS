@@ -16,6 +16,9 @@ export interface EditorEvents {
 export class Editor extends Graph {
   private emitter: EventEmitter;
   private edgeCounter = 0;
+  private isDragging: boolean = false;
+  private dragStartPos: { x: number; y: number } = { x: 0, y: 0 };
+  private currentNodeId: string | null = null;
 
   constructor(data: GraphData) {
     super(data);
@@ -211,5 +214,39 @@ export class Editor extends Graph {
         targetPort: edge.getTargetPort()
       }))
     };
+  }
+
+  public startDrag(nodeId: string, startX: number, startY: number): void {
+    this.isDragging = true;
+    this.currentNodeId = nodeId;
+    this.dragStartPos = { x: startX, y: startY };
+  }
+
+  public handleDrag(currentX: number, currentY: number): void {
+    if (!this.isDragging || !this.currentNodeId) return;
+
+    const dx = currentX - this.dragStartPos.x;
+    const dy = currentY - this.dragStartPos.y;
+
+    const node = this.nodes.get(this.currentNodeId);
+    if (node) {
+      const currentPos = node.getPosition();
+      this.moveNode(this.currentNodeId, currentPos.x + dx, currentPos.y + dy);
+    }
+
+    this.dragStartPos = { x: currentX, y: currentY };
+  }
+
+  public endDrag(): void {
+    this.isDragging = false;
+    this.currentNodeId = null;
+  }
+
+  public isNodeDragging(): boolean {
+    return this.isDragging;
+  }
+
+  public getCurrentDragNodeId(): string | null {
+    return this.currentNodeId;
   }
 } 

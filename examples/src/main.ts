@@ -98,8 +98,15 @@ addBtn.onclick = () => {
     name: `节点${nodeCount}`,
     type: 'custom',
     position: { x: 100 + nodeCount * 40, y: 200 },
-    inputs: [],
-    outputs: []
+    inputs: [
+      { id: `${nodeId}-input1`, name: '输入1', type: 'number', nodeId },
+      { id: `${nodeId}-input2`, name: '输入2', type: 'number', nodeId },
+      { id: `${nodeId}-input3`, name: '输入3', type: 'number', nodeId }
+    ],
+    outputs: [
+      { id: `${nodeId}-output1`, name: '输出1', type: 'number', nodeId },
+      { id: `${nodeId}-output2`, name: '输出2', type: 'number', nodeId }
+    ]
   });
 };
 
