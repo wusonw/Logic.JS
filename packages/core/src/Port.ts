@@ -1,3 +1,5 @@
+import type { Node } from './Node';
+
 export interface PortData {
   id: string;
   name: string;
@@ -6,19 +8,21 @@ export interface PortData {
   value?: any;
 }
 
-export abstract class Port {
+export class Port {
   protected id: string;
   protected name: string;
   protected type: string;
   protected nodeId: string;
   protected value: any;
+  public node?: Node;
 
-  constructor(data: PortData) {
+  constructor(data: PortData, node?: Node) {
     this.id = data.id;
     this.name = data.name;
     this.type = data.type;
     this.nodeId = data.nodeId;
     this.value = data.value;
+    if (node) this.node = node;
   }
 
   public getId(): string {
@@ -45,5 +49,21 @@ export abstract class Port {
     this.value = value;
   }
 
-  public abstract canConnect(port: Port): boolean;
+  public canConnect(port: Port): boolean {
+    return true;
+  }
+
+  public toJSON(): PortData {
+    return {
+      id: this.getId(),
+      name: this.getName(),
+      type: this.getType(),
+      nodeId: this.getNodeId(),
+      value: this.getValue()
+    };
+  }
+
+  public static fromJSON<T extends Port>(this: new (data: PortData) => T, data: PortData): T {
+    return new this(data);
+  }
 } 

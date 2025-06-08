@@ -1,15 +1,13 @@
 import { Editor } from './Editor';
-import { EditorNode } from './EditorNode';
-import { EditorEdge } from './EditorEdge';
-import { EditorPort } from './EditorPort';
+import { Node, Edge, Port } from '@logic.js/core';
 
 export interface RendererEvents {
-  'node:added': (node: EditorNode) => void;
+  'node:added': (node: Node) => void;
   'node:removed': (nodeId: string) => void;
-  'node:moved': (node: EditorNode) => void;
-  'edge:added': (edge: EditorEdge) => void;
+  'node:moved': (node: Node) => void;
+  'edge:added': (edge: Edge) => void;
   'edge:removed': (edgeId: string) => void;
-  'port:connected': (edge: EditorEdge) => void;
+  'port:connected': (edge: Edge) => void;
   'port:disconnected': (edgeId: string) => void;
 }
 
@@ -48,7 +46,7 @@ export class SvgRenderer {
 
   private setupEventListeners(): void {
     // 监听节点添加事件
-    this.editor.on('node:added', (node: EditorNode) => {
+    this.editor.on('node:added', (node: Node) => {
       this.renderNode(node);
     });
 
@@ -58,12 +56,12 @@ export class SvgRenderer {
     });
 
     // 监听节点移动事件
-    this.editor.on('node:moved', (node: EditorNode) => {
+    this.editor.on('node:moved', (node: Node) => {
       this.updateNodePosition(node);
     });
 
     // 监听边添加事件
-    this.editor.on('edge:added', (edge: EditorEdge) => {
+    this.editor.on('edge:added', (edge: Edge) => {
       this.renderEdge(edge);
     });
 
@@ -73,7 +71,7 @@ export class SvgRenderer {
     });
 
     // 监听端口连接事件
-    this.editor.on('port:connected', (edge: EditorEdge) => {
+    this.editor.on('port:connected', (edge: Edge) => {
       this.updateEdge(edge);
     });
 
@@ -201,29 +199,29 @@ export class SvgRenderer {
   }
 
   private renderNodes(): void {
-    const nodes = this.editor.getNodes() as EditorNode[];
+    const nodes = this.editor.getNodes() as Node[];
     nodes.forEach(node => this.renderNode(node));
   }
 
   private renderEdges(): void {
-    const edges = this.editor.getEdges() as EditorEdge[];
+    const edges = this.editor.getEdges() as Edge[];
     edges.forEach(edge => this.renderEdge(edge));
   }
 
-  private renderNode(node: EditorNode): void {
+  private renderNode(node: Node): void {
     const nodeElement = this.createNodeElement(node);
     this.nodeElements.set(node.getId(), nodeElement);
     this.svg.appendChild(nodeElement);
     this.renderPorts(node);
   }
 
-  private renderEdge(edge: EditorEdge): void {
+  private renderEdge(edge: Edge): void {
     const edgeElement = this.createEdgeElement(edge);
     this.edgeElements.set(edge.getId(), edgeElement);
     this.svg.appendChild(edgeElement);
   }
 
-  private renderPorts(node: EditorNode): void {
+  private renderPorts(node: Node): void {
     const inputs = node.getInputs();
     const outputs = node.getOutputs();
     const nodeElement = this.nodeElements.get(node.getId());
@@ -234,20 +232,20 @@ export class SvgRenderer {
     // 渲染输入端口
     inputs.forEach((port, index) => {
       const y = startY + index * portSpacing;
-      const portElement = this.createPortElement(port as EditorPort, 'input', y);
+      const portElement = this.createPortElement(port as Port, 'input', y);
       this.portElements.set(port.getId(), portElement);
       nodeElement.appendChild(portElement);
     });
     // 渲染输出端口
     outputs.forEach((port, index) => {
       const y = startY + index * portSpacing;
-      const portElement = this.createPortElement(port as EditorPort, 'output', y);
+      const portElement = this.createPortElement(port as Port, 'output', y);
       this.portElements.set(port.getId(), portElement);
       nodeElement.appendChild(portElement);
     });
   }
 
-  private createNodeElement(node: EditorNode): SVGElement {
+  private createNodeElement(node: Node): SVGElement {
     const { x, y } = node.getPosition();
     const element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     element.setAttribute('transform', `translate(${x}, ${y})`);
@@ -281,7 +279,7 @@ export class SvgRenderer {
     return element;
   }
 
-  private createPortElement(port: EditorPort, type: 'input' | 'output', y: number): SVGElement {
+  private createPortElement(port: Port, type: 'input' | 'output', y: number): SVGElement {
     const element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     // 创建端口圆点
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -306,33 +304,32 @@ export class SvgRenderer {
     return element;
   }
 
-  private createEdgeElement(edge: EditorEdge): SVGElement {
+  private createEdgeElement(edge: Edge): SVGElement {
     const element = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     element.setAttribute('fill', 'none');
     element.setAttribute('stroke', '#999');
     element.setAttribute('stroke-width', '2');
 
-    // 初始化边的路径
     const sourcePort = edge.getSourcePort();
     const targetPort = edge.getTargetPort();
+    if (sourcePort && targetPort) {
+      const sourceNode = this.editor.getNode(sourcePort.getNodeId());
+      const targetNode = this.editor.getNode(targetPort.getNodeId());
+      if (sourceNode && targetNode) {
+        const sourceNodePos = sourceNode.getPosition();
+        const targetNodePos = targetNode.getPosition();
 
-    const sourceNode = this.editor.getNode(sourcePort.getNodeId());
-    const targetNode = this.editor.getNode(targetPort.getNodeId());
+        const sourceX = sourceNodePos.x + 100;
+        const sourceY = sourceNodePos.y + 30;
+        const targetX = targetNodePos.x;
+        const targetY = targetNodePos.y + 30;
 
-    if (sourceNode && targetNode) {
-      const sourceNodePos = sourceNode.getPosition();
-      const targetNodePos = targetNode.getPosition();
+        const controlPoint1X = sourceX + (targetX - sourceX) * 0.5;
+        const controlPoint2X = targetX - (targetX - sourceX) * 0.5;
 
-      const sourceX = sourceNodePos.x + 100;
-      const sourceY = sourceNodePos.y + 30;
-      const targetX = targetNodePos.x;
-      const targetY = targetNodePos.y + 30;
-
-      const controlPoint1X = sourceX + (targetX - sourceX) * 0.5;
-      const controlPoint2X = targetX - (targetX - sourceX) * 0.5;
-
-      const path = `M ${sourceX} ${sourceY} C ${controlPoint1X} ${sourceY}, ${controlPoint2X} ${targetY}, ${targetX} ${targetY}`;
-      element.setAttribute('d', path);
+        const path = `M ${sourceX} ${sourceY} C ${controlPoint1X} ${sourceY}, ${controlPoint2X} ${targetY}, ${targetX} ${targetY}`;
+        element.setAttribute('d', path);
+      }
     }
 
     return element;
@@ -374,7 +371,7 @@ export class SvgRenderer {
     }
   }
 
-  private updateNodePosition(node: EditorNode): void {
+  private updateNodePosition(node: Node): void {
     const nodeElement = this.nodeElements.get(node.getId());
     if (nodeElement) {
       const { x, y } = node.getPosition();
@@ -385,7 +382,7 @@ export class SvgRenderer {
     }
   }
 
-  private updateConnectedEdges(node: EditorNode): void {
+  private updateConnectedEdges(node: Node): void {
     // 获取节点的所有端口
     const nodePorts = [...node.getInputs(), ...node.getOutputs()];
 
@@ -419,11 +416,12 @@ export class SvgRenderer {
     };
   }
 
-  private updateEdge(edge: EditorEdge): void {
+  private updateEdge(edge: Edge): void {
     const edgeElement = this.edgeElements.get(edge.getId());
     if (!edgeElement) return;
     const sourcePort = edge.getSourcePort();
     const targetPort = edge.getTargetPort();
+    if (!sourcePort || !targetPort) return;
     // 获取源节点和目标节点
     const sourceNode = this.editor.getNode(sourcePort.getNodeId());
     const targetNode = this.editor.getNode(targetPort.getNodeId());

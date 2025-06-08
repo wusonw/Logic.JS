@@ -1,20 +1,16 @@
-import { Graph, GraphData, NodeData, EdgeData, Port } from '@logic.js/core';
-import { EditorNode } from './EditorNode';
-import { EditorEdge } from './EditorEdge';
-import { EventEmitter } from './EventEmitter';
+import { Graph, GraphData, NodeData, EdgeData, Port, Node, Edge } from '@logic.js/core';
 
 export interface EditorEvents {
-  'node:added': (node: EditorNode) => void;
+  'node:added': (node: Node) => void;
   'node:removed': (nodeId: string) => void;
-  'node:moved': (node: EditorNode) => void;
-  'edge:added': (edge: EditorEdge) => void;
+  'node:moved': (node: Node) => void;
+  'edge:added': (edge: Edge) => void;
   'edge:removed': (edgeId: string) => void;
-  'port:connected': (edge: EditorEdge) => void;
+  'port:connected': (edge: Edge) => void;
   'port:disconnected': (edgeId: string) => void;
 }
 
 export class Editor extends Graph {
-  private emitter: EventEmitter;
   private edgeCounter = 0;
   private isDragging: boolean = false;
   private dragStartPos: { x: number; y: number } = { x: 0, y: 0 };
@@ -22,25 +18,16 @@ export class Editor extends Graph {
 
   constructor(data: GraphData) {
     super(data);
-    this.emitter = new EventEmitter();
-  }
-
-  public on<K extends keyof EditorEvents>(event: K, listener: EditorEvents[K]): void {
-    this.emitter.on(event, listener);
-  }
-
-  public off<K extends keyof EditorEvents>(event: K, listener: EditorEvents[K]): void {
-    this.emitter.off(event, listener);
   }
 
   protected addNode(data: NodeData): void {
-    const node = new EditorNode(data);
+    const node = new Node(data);
     this.nodes.set(node.getId(), node);
     this.emitter.emit('node:added', node);
   }
 
   protected addEdge(data: EdgeData): void {
-    const edge = new EditorEdge(data);
+    const edge = new Edge(data);
     this.edges.set(edge.getId(), edge);
     this.emitter.emit('edge:added', edge);
   }
@@ -49,46 +36,25 @@ export class Editor extends Graph {
     // 删除节点时，需要同时删除与该节点相关的所有边
     const node = this.nodes.get(id);
     if (node) {
-      console.log('Removing node:', id);
-      console.log('Current edges:', Array.from(this.edges.keys()));
-
       // 获取节点的所有端口
       const nodePorts = [...node.getInputs(), ...node.getOutputs()];
-      console.log('Node ports:', nodePorts.map(p => p.getId()));
-
       // 删除所有以该节点的任何端口为源或目标的边
       const edgesToRemove = new Set<string>();
-
-      // 遍历所有边，检查是否与要删除的节点的任何端口相关
       for (const edge of this.edges.values()) {
         const sourcePort = edge.getSourcePort();
         const targetPort = edge.getTargetPort();
-
-        console.log('Checking edge:', edge.getId());
-        console.log('Source port:', sourcePort.getId());
-        console.log('Target port:', targetPort.getId());
-
-        // 检查源端口和目标端口是否属于要删除的节点的任何端口
         if (nodePorts.some(port => port.getId() === sourcePort.getId() || port.getId() === targetPort.getId())) {
-          console.log('Adding edge to remove:', edge.getId());
           edgesToRemove.add(edge.getId());
         }
       }
-
-      console.log('Edges to remove:', Array.from(edgesToRemove));
-
       // 删除所有相关的边
       edgesToRemove.forEach(edgeId => {
-        console.log('Removing edge:', edgeId);
         this.edges.delete(edgeId);
         this.emitter.emit('edge:removed', edgeId);
       });
-
       // 删除节点
       this.nodes.delete(id);
       this.emitter.emit('node:removed', id);
-
-      console.log('Remaining edges:', Array.from(this.edges.keys()));
     }
   }
 
@@ -121,14 +87,14 @@ export class Editor extends Graph {
   }
 
   // 编辑器特有的方法
-  public addNodeToGraph(data: NodeData): EditorNode {
+  public addNodeToGraph(data: NodeData): Node {
     this.addNode(data);
-    return this.nodes.get(data.id) as EditorNode;
+    return this.nodes.get(data.id) as Node;
   }
 
-  public addEdgeToGraph(data: EdgeData): EditorEdge {
+  public addEdgeToGraph(data: EdgeData): Edge {
     this.addEdge(data);
-    return this.edges.get(data.id) as EditorEdge;
+    return this.edges.get(data.id) as Edge;
   }
 
   public removeNodeFromGraph(id: string): void {
@@ -140,7 +106,7 @@ export class Editor extends Graph {
   }
 
   public moveNode(id: string, x: number, y: number): void {
-    const node = this.nodes.get(id) as EditorNode;
+    const node = this.nodes.get(id) as Node;
     if (node) {
       node.setPosition(x, y);
       this.emitter.emit('node:moved', node);
@@ -153,7 +119,7 @@ export class Editor extends Graph {
 
     if (sourcePort && targetPort && sourcePort.canConnect(targetPort)) {
       const edgeId = `edge-${sourcePortId}-${targetPortId}-${this.edgeCounter++}`;
-      const edge = new EditorEdge({
+      const edge = new Edge({
         id: edgeId,
         sourcePort,
         targetPort
@@ -208,11 +174,7 @@ export class Editor extends Graph {
           nodeId: port.getNodeId()
         }))
       })),
-      edges: this.getEdges().map(edge => ({
-        id: edge.getId(),
-        sourcePort: edge.getSourcePort(),
-        targetPort: edge.getTargetPort()
-      }))
+      edges: this.getEdges().map(edge => edge.toJSON())
     };
   }
 
@@ -248,5 +210,15 @@ export class Editor extends Graph {
 
   public getCurrentDragNodeId(): string | null {
     return this.currentNodeId;
+  }
+
+  public getPort(id: string): Port | undefined {
+    for (const node of this.nodes.values()) {
+      const input = node.getInput(id);
+      if (input) return input;
+      const output = node.getOutput(id);
+      if (output) return output;
+    }
+    return undefined;
   }
 } 

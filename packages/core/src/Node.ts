@@ -9,7 +9,7 @@ export interface NodeData {
   outputs?: PortData[];
 }
 
-export abstract class Node {
+export class Node {
   protected id: string;
   protected name: string;
   protected type: string;
@@ -26,11 +26,13 @@ export abstract class Node {
     this.outputs = new Map();
 
     data.inputs?.forEach(input => {
-      this.addInput({ ...input, nodeId: this.id });
+      const port = new Port({ ...input, nodeId: this.id }, this);
+      this.inputs.set(port.getId(), port);
     });
 
     data.outputs?.forEach(output => {
-      this.addOutput({ ...output, nodeId: this.id });
+      const port = new Port({ ...output, nodeId: this.id }, this);
+      this.outputs.set(port.getId(), port);
     });
   }
 
@@ -70,7 +72,30 @@ export abstract class Node {
     return this.outputs.get(id);
   }
 
-  protected abstract addInput(data: PortData): void;
-  protected abstract addOutput(data: PortData): void;
-  protected abstract process(): void;
+  protected addInput(data: PortData): void {
+    const port = new Port({ ...data, nodeId: this.id }, this);
+    this.inputs.set(port.getId(), port);
+  }
+
+  protected addOutput(data: PortData): void {
+    const port = new Port({ ...data, nodeId: this.id }, this);
+    this.outputs.set(port.getId(), port);
+  }
+
+  protected process(): void { }
+
+  public toJSON(): NodeData {
+    return {
+      id: this.getId(),
+      name: this.getName(),
+      type: this.getType(),
+      position: this.getPosition(),
+      inputs: this.getInputs().map(port => port.toJSON()),
+      outputs: this.getOutputs().map(port => port.toJSON())
+    };
+  }
+
+  public static fromJSON(data: NodeData): Node {
+    return new Node(data);
+  }
 } 
