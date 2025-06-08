@@ -328,19 +328,19 @@ export class SvgRenderer {
       const sourceNode = this.editor.getNode(sourcePort.getNodeId());
       const targetNode = this.editor.getNode(targetPort.getNodeId());
       if (sourceNode && targetNode) {
-        const sourceNodePos = sourceNode.getPosition();
-        const targetNodePos = targetNode.getPosition();
+        const sourcePortElement = this.portElements.get(sourcePort.getId());
+        const targetPortElement = this.portElements.get(targetPort.getId());
 
-        const sourceX = sourceNodePos.x + 100;
-        const sourceY = sourceNodePos.y + 30;
-        const targetX = targetNodePos.x;
-        const targetY = targetNodePos.y + 30;
+        if (sourcePortElement && targetPortElement) {
+          const sourcePos = this.getPortAbsolutePosition(sourceNode.getPosition(), sourcePortElement, 'output');
+          const targetPos = this.getPortAbsolutePosition(targetNode.getPosition(), targetPortElement, 'input');
 
-        // 同步计算初始路径
-        const controlPoint1X = sourceX + (targetX - sourceX) * 0.5;
-        const controlPoint2X = targetX - (targetX - sourceX) * 0.5;
-        const path = `M ${sourceX} ${sourceY} C ${controlPoint1X} ${sourceY}, ${controlPoint2X} ${targetY}, ${targetX} ${targetY}`;
-        edgeElement.setAttribute('d', path);
+          // 同步计算初始路径
+          const controlPoint1X = sourcePos.x + (targetPos.x - sourcePos.x) * 0.5;
+          const controlPoint2X = targetPos.x - (targetPos.x - sourcePos.x) * 0.5;
+          const path = `M ${sourcePos.x} ${sourcePos.y} C ${controlPoint1X} ${sourcePos.y}, ${controlPoint2X} ${targetPos.y}, ${targetPos.x} ${targetPos.y}`;
+          edgeElement.setAttribute('d', path);
+        }
       }
     }
 

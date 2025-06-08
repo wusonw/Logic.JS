@@ -63,6 +63,15 @@ export class Port {
     };
   }
 
+  public fromJSON(data: PortData, node?: Node): void {
+    this.id = data.id;
+    this.name = data.name;
+    this.type = data.type;
+    this.nodeId = data.nodeId;
+    this.value = data.value;
+    if (node) this.node = node;
+  }
+
   public static fromJSON<T extends Port>(this: new (data: PortData) => T, data: PortData): T {
     return new this(data);
   }

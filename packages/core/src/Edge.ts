@@ -37,6 +37,20 @@ export class Edge {
     };
   }
 
+  public fromJSON(data: { id: string; sourcePortId: string; targetPortId: string }, portMap: Map<string, Port>): void {
+    this.id = data.id;
+
+    const sourcePort = portMap.get(data.sourcePortId);
+    const targetPort = portMap.get(data.targetPortId);
+
+    if (!sourcePort || !targetPort) {
+      throw new Error('Port not found for edge');
+    }
+
+    this.sourcePort = sourcePort;
+    this.targetPort = targetPort;
+  }
+
   public static fromJSON<T extends Edge>(this: new (data: EdgeData) => T, data: { id: string; sourcePortId: string; targetPortId: string }, portMap: Map<string, Port>): T {
     const sourcePort = portMap.get(data.sourcePortId);
     const targetPort = portMap.get(data.targetPortId);

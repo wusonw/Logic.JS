@@ -87,6 +87,31 @@ export class Graph {
     };
   }
 
+  public fromJSON(data: GraphData): void {
+    // 清除现有数据
+    this.nodes.clear();
+    this.edges.clear();
+
+    // 更新基本信息
+    this.id = data.id;
+    this.name = data.name;
+
+    // 先还原所有节点和端口
+    const portMap = new Map<string, Port>();
+    (data.nodes || []).forEach(nodeData => {
+      const node = Node.fromJSON(nodeData);
+      this.nodes.set(node.getId(), node);
+      node.getInputs().forEach(port => portMap.set(port.getId(), port));
+      node.getOutputs().forEach(port => portMap.set(port.getId(), port));
+    });
+
+    // 再还原所有边
+    (data.edges || []).forEach(edgeData => {
+      const edge = Edge.fromJSON(edgeData, portMap);
+      this.edges.set(edge.getId(), edge);
+    });
+  }
+
   public static fromJSON(data: GraphData): Graph {
     return new Graph(data);
   }

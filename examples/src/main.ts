@@ -1,120 +1,55 @@
-import { Editor, SvgRenderer } from '@logic.js/editor'
+import { Editor } from '@logic.js/editor'
+import { SvgRenderer } from '@logic.js/editor'
 import './style.css'
+import { sampleJSON } from './json-test'
 
-const app = document.querySelector<HTMLDivElement>('#app')!
+const container = document.getElementById('app')
+if (!container) {
+  console.error('Editor container not found')
+} else {
+  const editor = new Editor({
+    id: 'empty-graph',
+    name: 'Empty Graph'
+  })
+  const renderer = new SvgRenderer(container, editor)
 
-// 创建编辑器实例
-const editor = new Editor({
-  id: 'graph1',
-  name: '示例图',
-  nodes: [],
-  edges: []
-})
+  // 添加节点按钮事件
+  document.getElementById('add-node')?.addEventListener('click', () => {
+    const nodeId = `node-${Date.now()}`
+    editor.addNodeToGraph({
+      id: nodeId,
+      name: 'New Node',
+      type: 'default',
+      position: { x: 200, y: 200 },
+      inputs: [
+        { id: `${nodeId}-input`, name: 'Input', type: 'input', nodeId }
+      ],
+      outputs: [
+        { id: `${nodeId}-output`, name: 'Output', type: 'output', nodeId }
+      ]
+    })
+  })
 
-// 创建渲染器
-new SvgRenderer(app, editor)
+  // 删除节点按钮事件
+  document.getElementById('remove-node')?.addEventListener('click', () => {
+    const nodes = editor.getNodes()
+    if (nodes.length > 0) {
+      editor.removeNodeFromGraph(nodes[nodes.length - 1].getId())
+    }
+  })
 
-// 添加一些示例节点
-editor.addNodeToGraph({
-  id: 'node1',
-  name: '输入节点',
-  type: 'input',
-  position: { x: 100, y: 100 },
-  inputs: [],
-  outputs: [{
-    id: 'output1',
-    name: '输出',
-    type: 'number',
-    nodeId: 'node1'
-  }]
-})
+  // 添加 fromJSON 按钮
+  const fromJSONButton = document.createElement('button')
+  fromJSONButton.textContent = '加载示例'
+  fromJSONButton.style.marginLeft = '8px'
+  document.querySelector('div[style*="padding: 16px"]')?.appendChild(fromJSONButton)
 
-editor.addNodeToGraph({
-  id: 'node2',
-  name: '输出节点',
-  type: 'output',
-  position: { x: 300, y: 100 },
-  inputs: [{
-    id: 'input1',
-    name: '输入',
-    type: 'number',
-    nodeId: 'node2'
-  }],
-  outputs: []
-})
+  // fromJSON 按钮事件
+  fromJSONButton.addEventListener('click', () => {
+    // 使用实例的 fromJSON 方法更新数据
+    editor.fromJSON(sampleJSON)
 
-editor.addNodeToGraph({
-  id: 'node3',
-  name: '处理节点1',
-  type: 'process',
-  position: { x: 200, y: 200 },
-  inputs: [{
-    id: 'input2',
-    name: '输入',
-    type: 'number',
-    nodeId: 'node3'
-  }],
-  outputs: [{
-    id: 'output2',
-    name: '输出',
-    type: 'number',
-    nodeId: 'node3'
-  }]
-})
-
-editor.addNodeToGraph({
-  id: 'node4',
-  name: '处理节点2',
-  type: 'process',
-  position: { x: 400, y: 200 },
-  inputs: [{
-    id: 'input3',
-    name: '输入',
-    type: 'number',
-    nodeId: 'node4'
-  }],
-  outputs: [{
-    id: 'output3',
-    name: '输出',
-    type: 'number',
-    nodeId: 'node4'
-  }]
-})
-
-// 添加连接
-editor.connectPorts('output1', 'input2')
-editor.connectPorts('output2', 'input3')
-editor.connectPorts('output3', 'input1')
-
-let nodeCount = 4;
-
-// 添加节点按钮
-const addBtn = document.getElementById('add-node')!;
-addBtn.onclick = () => {
-  nodeCount++;
-  const nodeId = `node${nodeCount}`;
-  editor.addNodeToGraph({
-    id: nodeId,
-    name: `节点${nodeCount}`,
-    type: 'custom',
-    position: { x: 100 + nodeCount * 40, y: 200 },
-    inputs: [
-      { id: `${nodeId}-input1`, name: '输入1', type: 'number', nodeId },
-      { id: `${nodeId}-input2`, name: '输入2', type: 'number', nodeId },
-      { id: `${nodeId}-input3`, name: '输入3', type: 'number', nodeId }
-    ],
-    outputs: [
-      { id: `${nodeId}-output1`, name: '输出1', type: 'number', nodeId },
-      { id: `${nodeId}-output2`, name: '输出2', type: 'number', nodeId }
-    ]
-  });
-};
-
-// 删除节点按钮
-const removeBtn = document.getElementById('remove-node')!;
-removeBtn.onclick = () => {
-  if (nodeCount <= 2) return; // 保留初始节点
-  const nodeId = `node${nodeCount}`;
-  editor.removeNodeFromGraph(nodeId);
-  nodeCount--;
-}; 
+    // 重新渲染
+    renderer.update()
+  })
+} 
