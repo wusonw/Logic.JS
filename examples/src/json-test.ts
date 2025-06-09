@@ -9,7 +9,8 @@ export const sampleJSON = {
       id: 'node1',
       name: 'Input Node',
       type: 'input',
-      position: { x: 100, y: 100 },
+      x: 100,
+      y: 100,
       inputs: [
         { id: 'input1', name: 'Input 1', type: 'input', nodeId: 'node1' },
         { id: 'input2', name: 'Input 2', type: 'input', nodeId: 'node1' }
@@ -23,7 +24,8 @@ export const sampleJSON = {
       id: 'node2',
       name: 'Process Node 1',
       type: 'process',
-      position: { x: 300, y: 100 },
+      x: 300,
+      y: 100,
       inputs: [
         { id: 'input3', name: 'Input 1', type: 'input', nodeId: 'node2' },
         { id: 'input4', name: 'Input 2', type: 'input', nodeId: 'node2' }
@@ -37,7 +39,8 @@ export const sampleJSON = {
       id: 'node3',
       name: 'Process Node 2',
       type: 'process',
-      position: { x: 500, y: 100 },
+      x: 500,
+      y: 100,
       inputs: [
         { id: 'input5', name: 'Input 1', type: 'input', nodeId: 'node3' },
         { id: 'input6', name: 'Input 2', type: 'input', nodeId: 'node3' },
@@ -52,7 +55,8 @@ export const sampleJSON = {
       id: 'node4',
       name: 'Output Node',
       type: 'output',
-      position: { x: 700, y: 100 },
+      x: 700,
+      y: 100,
       inputs: [
         { id: 'input8', name: 'Input 1', type: 'input', nodeId: 'node4' },
         { id: 'input9', name: 'Input 2', type: 'input', nodeId: 'node4' },

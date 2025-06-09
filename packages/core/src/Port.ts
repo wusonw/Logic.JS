@@ -1,28 +1,34 @@
+import { EventEmitter } from './EventEmitter';
 import type { Node } from './Node';
+
+export interface PortEvents {
+  'connected': [targetPort: Port];
+  'disconnected': [];
+  'value:changed': [value: any];
+}
 
 export interface PortData {
   id: string;
   name: string;
-  type: string;
+  type: 'input' | 'output';
   nodeId: string;
   value?: any;
 }
 
-export class Port {
-  protected id: string;
-  protected name: string;
-  protected type: string;
-  protected nodeId: string;
-  protected value: any;
-  public node?: Node;
+export class Port extends EventEmitter<PortEvents> {
+  private id: string;
+  private name: string;
+  private type: 'input' | 'output';
+  private nodeId: string;
+  private value: any;
 
-  constructor(data: PortData, node?: Node) {
+  constructor(data: PortData) {
+    super();
     this.id = data.id;
     this.name = data.name;
     this.type = data.type;
     this.nodeId = data.nodeId;
     this.value = data.value;
-    if (node) this.node = node;
   }
 
   public getId(): string {
@@ -33,7 +39,7 @@ export class Port {
     return this.name;
   }
 
-  public getType(): string {
+  public getType(): 'input' | 'output' {
     return this.type;
   }
 
@@ -47,29 +53,39 @@ export class Port {
 
   public setValue(value: any): void {
     this.value = value;
+    this.emit('value:changed', value);
   }
 
-  public canConnect(port: Port): boolean {
-    return true;
+  public canConnect(targetPort: Port): boolean {
+    return this.type !== targetPort.type;
+  }
+
+  public connect(targetPort: Port): void {
+    if (this.canConnect(targetPort)) {
+      this.emit('connected', targetPort);
+    }
+  }
+
+  public disconnect(): void {
+    this.emit('disconnected');
   }
 
   public toJSON(): PortData {
     return {
-      id: this.getId(),
-      name: this.getName(),
-      type: this.getType(),
-      nodeId: this.getNodeId(),
-      value: this.getValue()
+      id: this.id,
+      name: this.name,
+      type: this.type,
+      nodeId: this.nodeId,
+      value: this.value
     };
   }
 
-  public fromJSON(data: PortData, node?: Node): void {
+  public fromJSON(data: PortData): void {
     this.id = data.id;
     this.name = data.name;
     this.type = data.type;
     this.nodeId = data.nodeId;
     this.value = data.value;
-    if (node) this.node = node;
   }
 
   public static fromJSON<T extends Port>(this: new (data: PortData) => T, data: PortData): T {

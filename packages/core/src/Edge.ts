@@ -1,20 +1,33 @@
+import { EventEmitter } from './EventEmitter';
 import { Port } from './Port';
+
+export interface EdgeEvents {
+  'connected': [sourcePort: Port, targetPort: Port];
+  'disconnected': [];
+}
 
 export interface EdgeData {
   id: string;
-  sourcePort: Port;
-  targetPort: Port;
+  sourcePortId: string;
+  targetPortId: string;
 }
 
-export class Edge {
-  protected id: string;
-  protected sourcePort: Port;
-  protected targetPort: Port;
+export class Edge extends EventEmitter<EdgeEvents> {
+  private id: string;
+  private sourcePort: Port;
+  private targetPort: Port;
 
-  constructor(data: EdgeData) {
+  constructor(data: EdgeData, portMap: Map<string, Port>) {
+    super();
     this.id = data.id;
-    this.sourcePort = data.sourcePort;
-    this.targetPort = data.targetPort;
+    const sourcePort = portMap.get(data.sourcePortId);
+    const targetPort = portMap.get(data.targetPortId);
+    if (!sourcePort || !targetPort) {
+      throw new Error('Port not found');
+    }
+    this.sourcePort = sourcePort;
+    this.targetPort = targetPort;
+    this.emit('connected', sourcePort, targetPort);
   }
 
   public getId(): string {
@@ -29,33 +42,16 @@ export class Edge {
     return this.targetPort;
   }
 
-  public toJSON(): { id: string; sourcePortId: string; targetPortId: string } {
+  public disconnect(): void {
+    this.emit('disconnected');
+  }
+
+  public toJSON(): EdgeData {
     return {
-      id: this.getId(),
+      id: this.id,
       sourcePortId: this.sourcePort.getId(),
       targetPortId: this.targetPort.getId()
     };
-  }
-
-  public fromJSON(data: { id: string; sourcePortId: string; targetPortId: string }, portMap: Map<string, Port>): void {
-    this.id = data.id;
-
-    const sourcePort = portMap.get(data.sourcePortId);
-    const targetPort = portMap.get(data.targetPortId);
-
-    if (!sourcePort || !targetPort) {
-      throw new Error('Port not found for edge');
-    }
-
-    this.sourcePort = sourcePort;
-    this.targetPort = targetPort;
-  }
-
-  public static fromJSON<T extends Edge>(this: new (data: EdgeData) => T, data: { id: string; sourcePortId: string; targetPortId: string }, portMap: Map<string, Port>): T {
-    const sourcePort = portMap.get(data.sourcePortId);
-    const targetPort = portMap.get(data.targetPortId);
-    if (!sourcePort || !targetPort) throw new Error('Port not found for edge');
-    return new this({ id: data.id, sourcePort, targetPort });
   }
 
   public validate(): boolean { return true; }
