@@ -1,5 +1,6 @@
 import { EventEmitter } from './EventEmitter';
 import { Port, PortData } from './Port';
+import { Bounds } from './QuadTree';
 
 export interface NodeEvents {
   'moving': [x: number, y: number];
@@ -24,6 +25,8 @@ export class Node extends EventEmitter<NodeEvents> {
   private type: string;
   private x: number = 0;
   private y: number = 0;
+  private width: number = 100;  // 默认节点宽度
+  private height: number = 60;  // 默认节点高度
   private inputs: Map<string, Port>;
   private outputs: Map<string, Port>;
 
@@ -126,5 +129,19 @@ export class Node extends EventEmitter<NodeEvents> {
 
   public static fromJSON(data: NodeData): Node {
     return new Node(data);
+  }
+
+  public getBounds(): Bounds {
+    return {
+      x: this.x - this.width / 2,
+      y: this.y - this.height / 2,
+      width: this.width,
+      height: this.height
+    };
+  }
+
+  public setSize(width: number, height: number): void {
+    this.width = width;
+    this.height = height;
   }
 } 

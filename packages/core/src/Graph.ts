@@ -2,6 +2,7 @@ import { Node, NodeData } from './Node';
 import { Edge, EdgeData } from './Edge';
 import { Port } from './Port';
 import { EventEmitter } from './EventEmitter';
+import { QuadTree, Bounds } from './QuadTree';
 
 export interface GraphEvents {
   'node:added': [node: Node];
@@ -31,6 +32,8 @@ export class Graph extends EventEmitter<GraphEvents> {
   protected name: string;
   protected nodes: Map<string, Node>;
   protected edges: Map<string, Edge>;
+  protected nodeQuadTree: QuadTree;
+  protected edgeQuadTree: QuadTree;
 
   constructor(data: GraphData) {
     super();
@@ -38,6 +41,16 @@ export class Graph extends EventEmitter<GraphEvents> {
     this.name = data.name;
     this.nodes = new Map();
     this.edges = new Map();
+
+    // 初始化四叉树，使用一个足够大的边界
+    const bounds: Bounds = {
+      x: -10000,
+      y: -10000,
+      width: 20000,
+      height: 20000
+    };
+    this.nodeQuadTree = new QuadTree(bounds);
+    this.edgeQuadTree = new QuadTree(bounds);
 
     // 创建节点
     (data.nodes || []).forEach(nodeData => {
@@ -56,14 +69,30 @@ export class Graph extends EventEmitter<GraphEvents> {
   private createNode(nodeData: NodeData): Node {
     const node = new Node(nodeData);
     this.nodes.set(node.getId(), node);
+
+    // 将节点添加到四叉树
+    const bounds = node.getBounds();
+    this.nodeQuadTree.insert({
+      id: node.getId(),
+      bounds
+    });
+
     this.emit('node:added', node);
     this.setupNodeEventListeners(node);
     return node;
   }
 
   private createEdge(edgeData: EdgeData, portMap: Map<string, Port>): Edge {
-    const edge = new Edge(edgeData, portMap);
+    const edge = new Edge(edgeData, portMap, this.nodes);
     this.edges.set(edge.getId(), edge);
+
+    // 将边添加到四叉树
+    const bounds = edge.getBounds();
+    this.edgeQuadTree.insert({
+      id: edge.getId(),
+      bounds
+    });
+
     this.emit('edge:added', edge);
     this.setupEdgeEventListeners(edge);
     return edge;
@@ -75,6 +104,13 @@ export class Graph extends EventEmitter<GraphEvents> {
     });
 
     node.on('moved', (x, y) => {
+      // 更新四叉树中的节点位置
+      this.nodeQuadTree.remove(node.getId());
+      const bounds = node.getBounds();
+      this.nodeQuadTree.insert({
+        id: node.getId(),
+        bounds
+      });
       this.emit('node:moved', node, x, y);
     });
 
@@ -147,6 +183,9 @@ export class Graph extends EventEmitter<GraphEvents> {
   public removeNode(nodeId: string): void {
     const node = this.nodes.get(nodeId);
     if (node) {
+      // 从四叉树中移除节点
+      this.nodeQuadTree.remove(nodeId);
+
       // 删除与该节点相关的所有边
       const edgesToRemove = Array.from(this.edges.values()).filter(edge => {
         const sourcePort = edge.getSourcePort();
@@ -182,6 +221,9 @@ export class Graph extends EventEmitter<GraphEvents> {
   public removeEdge(edgeId: string): void {
     const edge = this.edges.get(edgeId);
     if (edge) {
+      // 从四叉树中移除边
+      this.edgeQuadTree.remove(edgeId);
+
       edge.disconnect();
       this.edges.delete(edgeId);
       this.emit('edge:removed', edgeId);
@@ -198,6 +240,10 @@ export class Graph extends EventEmitter<GraphEvents> {
   }
 
   public clear(): void {
+    // 清除四叉树
+    this.nodeQuadTree.clear();
+    this.edgeQuadTree.clear();
+
     // 先删除所有边
     this.edges.forEach(edge => {
       this.removeEdge(edge.getId());
@@ -235,5 +281,15 @@ export class Graph extends EventEmitter<GraphEvents> {
 
   public static fromJSON(data: GraphData): Graph {
     return new Graph(data);
+  }
+
+  public getNodesInBounds(bounds: Bounds): Node[] {
+    const items = this.nodeQuadTree.query(bounds);
+    return items.map(item => this.nodes.get(item.id)).filter((node): node is Node => node !== undefined);
+  }
+
+  public getEdgesInBounds(bounds: Bounds): Edge[] {
+    const items = this.edgeQuadTree.query(bounds);
+    return items.map(item => this.edges.get(item.id)).filter((edge): edge is Edge => edge !== undefined);
   }
 } 

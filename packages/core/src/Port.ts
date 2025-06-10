@@ -21,6 +21,8 @@ export class Port extends EventEmitter<PortEvents> {
   private type: 'input' | 'output';
   private nodeId: string;
   private value: any;
+  private offsetX: number = 0;  // 相对于节点的 X 偏移
+  private offsetY: number = 0;  // 相对于节点的 Y 偏移
 
   constructor(data: PortData) {
     super();
@@ -29,6 +31,13 @@ export class Port extends EventEmitter<PortEvents> {
     this.type = data.type;
     this.nodeId = data.nodeId;
     this.value = data.value;
+
+    // 根据端口类型设置默认偏移
+    if (this.type === 'input') {
+      this.offsetX = -10;  // 输入端口在节点左侧
+    } else {
+      this.offsetX = 10;   // 输出端口在节点右侧
+    }
   }
 
   public getId(): string {
@@ -90,5 +99,18 @@ export class Port extends EventEmitter<PortEvents> {
 
   public static fromJSON<T extends Port>(this: new (data: PortData) => T, data: PortData): T {
     return new this(data);
+  }
+
+  public getPosition(node: Node): { x: number; y: number } {
+    const nodePos = node.getPosition();
+    return {
+      x: nodePos.x + this.offsetX,
+      y: nodePos.y + this.offsetY
+    };
+  }
+
+  public setOffset(x: number, y: number): void {
+    this.offsetX = x;
+    this.offsetY = y;
   }
 } 
