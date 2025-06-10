@@ -6,14 +6,7 @@ settings:
 
 importers:
 
-  .:
-    dependencies:
-      '@types/lodash-es':
-        specifier: ^4.17.12
-        version: 4.17.12
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
+  .: {}
 
   examples:
     dependencies:
@@ -46,6 +39,9 @@ importers:
       vite-plugin-dts:
         specifier: ^3.7.0
         version: 3.9.1(@types/node@22.15.30)(rollup@4.42.0)(typescript@5.8.3)(vite@5.4.19(@types/node@22.15.30))
+      vitest:
+        specifier: ^1.3.1
+        version: 1.6.1(@types/node@22.15.30)
 
   packages/editor:
     dependencies:

@@ -1,6 +1,7 @@
 import { EventEmitter } from './EventEmitter';
 import { Port, PortData } from './Port';
 import { Bounds } from './QuadTree';
+import { Cache } from './Cache';
 
 export interface NodeEvents {
   'moving': [x: number, y: number];
@@ -29,6 +30,9 @@ export class Node extends EventEmitter<NodeEvents> {
   private height: number = 60;  // 默认节点高度
   private inputs: Map<string, Port>;
   private outputs: Map<string, Port>;
+
+  // 使用统一的缓存管理
+  private cache = new Cache<any>();
 
   private createPorts(portDataList: PortData[] | undefined, portMap: Map<string, Port>): void {
     (portDataList || []).forEach(portData => {
@@ -69,22 +73,31 @@ export class Node extends EventEmitter<NodeEvents> {
   }
 
   public getPosition(): { x: number; y: number } {
-    return { x: this.x, y: this.y };
+    return this.cache.useCache('position', () => ({ x: this.x, y: this.y }));
   }
 
   public setPosition(x: number, y: number): void {
     this.emit('moving', x, y);
     this.x = x;
     this.y = y;
+    // 清除相关缓存
+    this.cache.clear('position');
+    this.cache.clear('bounds');
     this.emit('moved', x, y);
   }
 
   public getInputs(): Port[] {
-    return Array.from(this.inputs.values());
+    return this.cache.useCache('ports', () => ({
+      inputs: Array.from(this.inputs.values()),
+      outputs: Array.from(this.outputs.values())
+    })).inputs;
   }
 
   public getOutputs(): Port[] {
-    return Array.from(this.outputs.values());
+    return this.cache.useCache('ports', () => ({
+      inputs: Array.from(this.inputs.values()),
+      outputs: Array.from(this.outputs.values())
+    })).outputs;
   }
 
   public getInput(id: string): Port | undefined {
@@ -97,21 +110,25 @@ export class Node extends EventEmitter<NodeEvents> {
 
   public addInput(port: Port): void {
     this.inputs.set(port.getId(), port);
+    this.cache.clear('ports');
     this.emit('port:added', port);
   }
 
   public addOutput(port: Port): void {
     this.outputs.set(port.getId(), port);
+    this.cache.clear('ports');
     this.emit('port:added', port);
   }
 
   public removeInput(portId: string): void {
     this.inputs.delete(portId);
+    this.cache.clear('ports');
     this.emit('port:removed', portId);
   }
 
   public removeOutput(portId: string): void {
     this.outputs.delete(portId);
+    this.cache.clear('ports');
     this.emit('port:removed', portId);
   }
 
@@ -132,16 +149,18 @@ export class Node extends EventEmitter<NodeEvents> {
   }
 
   public getBounds(): Bounds {
-    return {
+    return this.cache.useCache('bounds', () => ({
       x: this.x - this.width / 2,
       y: this.y - this.height / 2,
       width: this.width,
       height: this.height
-    };
+    }));
   }
 
   public setSize(width: number, height: number): void {
     this.width = width;
     this.height = height;
+    // 清除相关缓存
+    this.cache.clear('bounds');
   }
 } 

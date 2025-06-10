@@ -2,6 +2,7 @@ import { EventEmitter } from './EventEmitter';
 import { Port } from './Port';
 import { Bounds } from './QuadTree';
 import { Node } from './Node';
+import { Cache } from './Cache';
 
 export interface EdgeEvents {
   'connected': [sourcePort: Port, targetPort: Port];
@@ -20,6 +21,9 @@ export class Edge extends EventEmitter<EdgeEvents> {
   private targetPort: Port;
   private sourceNode: Node;
   private targetNode: Node;
+
+  // 使用统一的缓存管理
+  private cache = new Cache<any>();
 
   constructor(data: EdgeData, portMap: Map<string, Port>, nodeMap: Map<string, Node>) {
     super();
@@ -71,20 +75,34 @@ export class Edge extends EventEmitter<EdgeEvents> {
   public transfer(): void { }
 
   public getBounds(): Bounds {
-    const sourcePos = this.sourcePort.getPosition(this.sourceNode);
-    const targetPos = this.targetPort.getPosition(this.targetNode);
+    return this.cache.useCache('bounds', () => {
+      const sourcePos = this.getSourcePosition();
+      const targetPos = this.getTargetPosition();
 
-    // 计算边的边界框
-    const x = Math.min(sourcePos.x, targetPos.x);
-    const y = Math.min(sourcePos.y, targetPos.y);
-    const width = Math.abs(targetPos.x - sourcePos.x);
-    const height = Math.abs(targetPos.y - sourcePos.y);
+      // 计算边的边界框
+      const x = Math.min(sourcePos.x, targetPos.x);
+      const y = Math.min(sourcePos.y, targetPos.y);
+      const width = Math.abs(targetPos.x - sourcePos.x);
+      const height = Math.abs(targetPos.y - sourcePos.y);
 
-    return {
-      x,
-      y,
-      width,
-      height
-    };
+      return { x, y, width, height };
+    });
+  }
+
+  private getSourcePosition(): { x: number; y: number } {
+    return this.cache.useCache('sourcePosition', () =>
+      this.sourcePort.getPosition(this.sourceNode)
+    );
+  }
+
+  private getTargetPosition(): { x: number; y: number } {
+    return this.cache.useCache('targetPosition', () =>
+      this.targetPort.getPosition(this.targetNode)
+    );
+  }
+
+  // 清除所有缓存
+  public clearCache(): void {
+    this.cache.clear();
   }
 }

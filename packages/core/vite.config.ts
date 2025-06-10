@@ -16,5 +16,5 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       outDir: 'dist'
     })
-  ]
+  ],
 }); 
