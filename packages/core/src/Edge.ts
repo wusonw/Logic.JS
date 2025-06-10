@@ -22,7 +22,7 @@ export class Edge extends EventEmitter<EdgeEvents> {
   private sourceNode: Node;
   private targetNode: Node;
 
-  // 使用统一的缓存管理
+  // Use unified cache management
   private cache = new Cache<any>();
 
   constructor(data: EdgeData, portMap: Map<string, Port>, nodeMap: Map<string, Node>) {
@@ -33,6 +33,15 @@ export class Edge extends EventEmitter<EdgeEvents> {
     if (!sourcePort || !targetPort) {
       throw new Error('Port not found');
     }
+
+    // Validate port types
+    if (sourcePort.getType() === targetPort.getType()) {
+      throw new Error('Cannot connect ports of the same type');
+    }
+    if (sourcePort.getType() === 'input') {
+      throw new Error('Source port cannot be an input port');
+    }
+
     this.sourcePort = sourcePort;
     this.targetPort = targetPort;
 
@@ -79,7 +88,7 @@ export class Edge extends EventEmitter<EdgeEvents> {
       const sourcePos = this.getSourcePosition();
       const targetPos = this.getTargetPosition();
 
-      // 计算边的边界框
+      // Calculate edge bounding box
       const x = Math.min(sourcePos.x, targetPos.x);
       const y = Math.min(sourcePos.y, targetPos.y);
       const width = Math.abs(targetPos.x - sourcePos.x);
@@ -101,7 +110,7 @@ export class Edge extends EventEmitter<EdgeEvents> {
     );
   }
 
-  // 清除所有缓存
+  // Clear all cache
   public clearCache(): void {
     this.cache.clear();
   }

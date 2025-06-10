@@ -42,7 +42,7 @@ export class Graph extends EventEmitter<GraphEvents> {
     this.nodes = new Map();
     this.edges = new Map();
 
-    // 初始化四叉树，使用一个足够大的边界
+    // Initialize quadtree with a large enough boundary
     const bounds: Bounds = {
       x: -10000,
       y: -10000,
@@ -52,25 +52,35 @@ export class Graph extends EventEmitter<GraphEvents> {
     this.nodeQuadTree = new QuadTree(bounds);
     this.edgeQuadTree = new QuadTree(bounds);
 
-    // 创建节点
-    (data.nodes || []).forEach(nodeData => {
-      this.createNode(nodeData);
-    });
+    this.initializeGraph(data);
+  }
 
-    // 创建端口映射
+  /**
+   * Initialize or reinitialize the graph with given data
+   * @param data Graph data to initialize with
+   */
+  private initializeGraph(data: GraphData): void {
+    // Create nodes in batch
+    const nodes = (data.nodes || []).map(nodeData => new Node(nodeData));
+    this.addNodes(nodes);
+
+    // Create edges in batch
     const portMap = this.createPortMap();
-
-    // 创建边
-    (data.edges || []).forEach(edgeData => {
-      this.createEdge(edgeData, portMap);
+    const edges = (data.edges || []).map(edgeData => {
+      const edge = new Edge(edgeData, portMap, this.nodes);
+      return {
+        sourcePort: edge.getSourcePort(),
+        targetPort: edge.getTargetPort()
+      };
     });
+    this.addEdges(edges);
   }
 
   private createNode(nodeData: NodeData): Node {
     const node = new Node(nodeData);
     this.nodes.set(node.getId(), node);
 
-    // 将节点添加到四叉树
+    // Add node to quadtree
     const bounds = node.getBounds();
     this.nodeQuadTree.insert({
       id: node.getId(),
@@ -86,7 +96,7 @@ export class Graph extends EventEmitter<GraphEvents> {
     const edge = new Edge(edgeData, portMap, this.nodes);
     this.edges.set(edge.getId(), edge);
 
-    // 将边添加到四叉树
+    // Add edge to quadtree
     const bounds = edge.getBounds();
     this.edgeQuadTree.insert({
       id: edge.getId(),
@@ -104,7 +114,7 @@ export class Graph extends EventEmitter<GraphEvents> {
     });
 
     node.on('moved', (x, y) => {
-      // 更新四叉树中的节点位置
+      // Update node position in quadtree
       this.nodeQuadTree.remove(node.getId());
       const bounds = node.getBounds();
       this.nodeQuadTree.insert({
@@ -183,45 +193,48 @@ export class Graph extends EventEmitter<GraphEvents> {
   public removeNode(nodeId: string): void {
     const node = this.nodes.get(nodeId);
     if (node) {
-      // 从四叉树中移除节点
+      // Remove node from quadtree
       this.nodeQuadTree.remove(nodeId);
 
-      // 删除与该节点相关的所有边
+      // Delete all edges related to this node
       const edgesToRemove = Array.from(this.edges.values()).filter(edge => {
         const sourcePort = edge.getSourcePort();
         const targetPort = edge.getTargetPort();
         return sourcePort.getNodeId() === nodeId || targetPort.getNodeId() === nodeId;
       });
 
-      // 先删除所有相关的边
+      // First remove all related edges
       edgesToRemove.forEach(edge => {
         this.removeEdge(edge.getId());
       });
 
-      // 然后删除节点
+      // Then remove the node
       this.nodes.delete(nodeId);
       this.emit('node:removed', nodeId);
     }
   }
 
   public addEdge(sourcePort: Port, targetPort: Port): Edge | undefined {
-    if (!sourcePort.canConnect(targetPort)) return undefined;
+    try {
+      const edgeId = `edge-${sourcePort.getId()}-${targetPort.getId()}`;
+      const edgeData: EdgeData = {
+        id: edgeId,
+        sourcePortId: sourcePort.getId(),
+        targetPortId: targetPort.getId()
+      };
+      const portMap = new Map([[sourcePort.getId(), sourcePort], [targetPort.getId(), targetPort]]);
 
-    const edgeId = `edge-${sourcePort.getId()}-${targetPort.getId()}`;
-    const edgeData: EdgeData = {
-      id: edgeId,
-      sourcePortId: sourcePort.getId(),
-      targetPortId: targetPort.getId()
-    };
-    const portMap = new Map([[sourcePort.getId(), sourcePort], [targetPort.getId(), targetPort]]);
-
-    return this.createEdge(edgeData, portMap);
+      return this.createEdge(edgeData, portMap);
+    } catch (error) {
+      console.warn('Failed to create edge:', error);
+      return undefined;
+    }
   }
 
   public removeEdge(edgeId: string): void {
     const edge = this.edges.get(edgeId);
     if (edge) {
-      // 从四叉树中移除边
+      // Remove edge from quadtree
       this.edgeQuadTree.remove(edgeId);
 
       edge.disconnect();
@@ -240,43 +253,63 @@ export class Graph extends EventEmitter<GraphEvents> {
   }
 
   public clear(): void {
-    // 清除四叉树
+    // Clear quadtrees
     this.nodeQuadTree.clear();
     this.edgeQuadTree.clear();
 
-    // 先删除所有边
-    this.edges.forEach(edge => {
-      this.removeEdge(edge.getId());
-    });
-    this.edges.clear();
+    // Remove all edges in batch
+    const edgeIds = Array.from(this.edges.keys());
+    this.removeEdges(edgeIds);
 
-    // 再删除所有节点
-    this.nodes.forEach(node => {
-      this.removeNode(node.getId());
-    });
-    this.nodes.clear();
+    // Remove all nodes in batch
+    const nodeIds = Array.from(this.nodes.keys());
+    this.removeNodes(nodeIds);
+  }
+
+  /**
+   * Batch add nodes
+   * @param nodes Array of nodes to add
+   */
+  public addNodes(nodes: Node[]): void {
+    nodes.forEach(node => this.addNode(node));
+  }
+
+  /**
+   * Batch remove nodes
+   * @param nodeIds Array of node IDs to remove
+   */
+  public removeNodes(nodeIds: string[]): void {
+    nodeIds.forEach(nodeId => this.removeNode(nodeId));
+  }
+
+  /**
+   * Batch add edges
+   * @param edges Array of edges to add, each containing source and target ports
+   */
+  public addEdges(edges: Array<{ sourcePort: Port; targetPort: Port }>): Edge[] {
+    return edges
+      .map(({ sourcePort, targetPort }) => this.addEdge(sourcePort, targetPort))
+      .filter((edge): edge is Edge => edge !== undefined);
+  }
+
+  /**
+   * Batch remove edges
+   * @param edgeIds Array of edge IDs to remove
+   */
+  public removeEdges(edgeIds: string[]): void {
+    edgeIds.forEach(edgeId => this.removeEdge(edgeId));
   }
 
   public fromJSON(data: GraphData): void {
-    // 清除现有数据
+    // Clear existing data
     this.clear();
 
-    // 更新基本信息
+    // Update basic information
     this.id = data.id;
     this.name = data.name;
 
-    // 先还原所有节点和端口
-    const portMap = new Map<string, Port>();
-    (data.nodes || []).forEach(nodeData => {
-      const node = this.createNode(nodeData);
-      node.getInputs().forEach(port => portMap.set(port.getId(), port));
-      node.getOutputs().forEach(port => portMap.set(port.getId(), port));
-    });
-
-    // 再还原所有边
-    (data.edges || []).forEach(edgeData => {
-      this.createEdge(edgeData, portMap);
-    });
+    // Initialize graph with new data
+    this.initializeGraph(data);
   }
 
   public static fromJSON(data: GraphData): Graph {

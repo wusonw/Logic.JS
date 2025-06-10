@@ -25,12 +25,12 @@ export class PerformanceMonitor {
       const duration = endTime - startTime;
       timers.push(duration);
 
-      // 如果操作时间超过16ms（约60fps），发出警告
+      // If operation time exceeds 16ms (approximately 60fps), emit warning
       if (duration > 16) {
         console.warn(`Performance warning: ${label} took ${duration.toFixed(2)}ms`);
       }
 
-      // 只保留最近100次的记录
+      // Only keep the last 100 records
       if (timers.length > 100) {
         timers.shift();
       }

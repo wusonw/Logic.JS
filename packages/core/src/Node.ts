@@ -16,8 +16,8 @@ export interface NodeData {
   type: string;
   x: number;
   y: number;
-  inputs?: PortData[];
-  outputs?: PortData[];
+  inputs?: Omit<PortData, 'nodeId'>[];
+  outputs?: Omit<PortData, 'nodeId'>[];
 }
 
 export class Node extends EventEmitter<NodeEvents> {
@@ -26,15 +26,15 @@ export class Node extends EventEmitter<NodeEvents> {
   private type: string;
   private x: number = 0;
   private y: number = 0;
-  private width: number = 100;  // 默认节点宽度
-  private height: number = 60;  // 默认节点高度
+  private width: number = 100;  // Default node width
+  private height: number = 60;  // Default node height
   private inputs: Map<string, Port>;
   private outputs: Map<string, Port>;
 
-  // 使用统一的缓存管理
+  // Use unified cache management
   private cache = new Cache<any>();
 
-  private createPorts(portDataList: PortData[] | undefined, portMap: Map<string, Port>): void {
+  private createPorts(portDataList: Omit<PortData, 'nodeId'>[] | undefined, portMap: Map<string, Port>): void {
     (portDataList || []).forEach(portData => {
       const port = Port.fromJSON({
         ...portData,
@@ -55,7 +55,7 @@ export class Node extends EventEmitter<NodeEvents> {
     this.inputs = new Map();
     this.outputs = new Map();
 
-    // 创建输入和输出端口
+    // Create input and output ports
     this.createPorts(data.inputs, this.inputs);
     this.createPorts(data.outputs, this.outputs);
   }
@@ -80,7 +80,7 @@ export class Node extends EventEmitter<NodeEvents> {
     this.emit('moving', x, y);
     this.x = x;
     this.y = y;
-    // 清除相关缓存
+    // Clear related cache
     this.cache.clear('position');
     this.cache.clear('bounds');
     this.emit('moved', x, y);
@@ -160,7 +160,7 @@ export class Node extends EventEmitter<NodeEvents> {
   public setSize(width: number, height: number): void {
     this.width = width;
     this.height = height;
-    // 清除相关缓存
+    // Clear related cache
     this.cache.clear('bounds');
   }
 } 

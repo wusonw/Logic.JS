@@ -44,17 +44,17 @@ export class VirtualNode {
       this.element = document.createElementNS('http://www.w3.org/2000/svg', this.type);
     }
 
-    // 更新属性
+    // Update attributes
     this.attributes.forEach((value, name) => {
       this.element?.setAttribute(name, value);
     });
 
-    // 更新文本内容
+    // Update text content
     if (this._textContent) {
       this.element.textContent = this._textContent;
     }
 
-    // 更新子节点
+    // Update child nodes
     this.children.forEach(child => {
       child.update();
       if (child.getElement()) {

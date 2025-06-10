@@ -22,69 +22,69 @@ export class SvgRenderer {
     container.appendChild(this.svg);
     this.drawGrid();
 
-    // 设置事件监听
+    // Set up event listeners
     this.setupDragEvents();
 
-    // 设置编辑器事件监听
+    // Set up editor event listeners
     this.setupEventListeners();
 
-    // 初始渲染
+    // Initial render
     this.render();
   }
 
   private setupEventListeners(): void {
-    // 监听节点添加事件
+    // Listen for node add event
     this.editor.on('node:added', (node: Node) => {
       this.renderNode(node);
     });
 
-    // 监听节点删除事件
+    // Listen for node remove event
     this.editor.on('node:removed', (nodeId: string) => {
       this.removeNode(nodeId);
     });
 
-    // 监听节点移动事件
+    // Listen for node move event
     this.editor.on('node:moving', this.handleNodeMoving.bind(this));
     this.editor.on('node:moved', this.handleNodeMoved.bind(this));
 
-    // 监听边添加事件
+    // Listen for edge add event
     this.editor.on('edge:added', (edge: Edge) => {
       this.renderEdge(edge);
     });
 
-    // 监听边删除事件
+    // Listen for edge remove event
     this.editor.on('edge:removed', (edgeId: string) => {
       this.removeEdge(edgeId);
     });
 
-    // 监听端口连接事件
+    // Listen for port connect event
     this.editor.on('port:connected', (edge: Edge) => {
       this.updateEdge(edge);
     });
 
-    // 监听端口断开事件
+    // Listen for port disconnect event
     this.editor.on('port:disconnected', (edgeId: string) => {
       this.removeEdge(edgeId);
     });
 
-    // 监听连线开始事件
+    // Listen for connection start event
     this.editor.on('connection:start', () => {
       this.startTempLine();
     });
 
-    // 监听连线更新事件
+    // Listen for connection update event
     this.editor.on('connection:update', (x: number, y: number) => {
       this.updateTempLine(x, y);
     });
 
-    // 监听连线结束事件
+    // Listen for connection end event
     this.editor.on('connection:end', () => {
       this.removeTempLine();
     });
   }
 
   private setupDragEvents(): void {
-    // 在 SVG 根元素上只处理鼠标移动和释放事件
+    // Only handle mouse move and release events on SVG root element
     this.svg.addEventListener('mousemove', (e: MouseEvent) => {
       if (this.editor.getIsDragging()) {
         const rect = this.svg.getBoundingClientRect();
@@ -117,7 +117,7 @@ export class SvgRenderer {
   }
 
   private startTempLine(): void {
-    // 创建临时连线元素
+    // Create temporary connection element
     const tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     tempLine.setAttribute('stroke', '#666');
     tempLine.setAttribute('stroke-width', '2');
@@ -134,7 +134,7 @@ export class SvgRenderer {
     if (!startPortId) return;
     const start = this.getPortCircleCenter(startPortId);
     if (!start) return;
-    // 颜色与端口一致
+    // Color matches port
     const port = this.editor.getPort(startPortId);
     const color = port?.getType() === 'input' ? '#ffd600' : '#b388ff';
     tempLine.setAttribute('stroke', color);
@@ -212,7 +212,7 @@ export class SvgRenderer {
     const { x, y } = node.getPosition();
     nodeElement.setAttribute('transform', `translate(${x}, ${y})`);
     nodeElement.setAttribute('id', `node-${nodeId}`);
-    // 样式参数
+    // Style parameters
     const portCount = Math.max(node.getInputs().length, node.getOutputs().length);
     const portSpacing = 40;
     const minHeight = 100;
@@ -220,17 +220,7 @@ export class SvgRenderer {
     const width = 220;
     const titlebarHeight = 32;
     const height = Math.max(minHeight, portCount * portSpacing + padding + titlebarHeight);
-    // titlebar
-    const titlebar = new VirtualNode('rect', `${nodeId}-titlebar`);
-    titlebar.setAttribute('x', '0');
-    titlebar.setAttribute('y', '0');
-    titlebar.setAttribute('width', width.toString());
-    titlebar.setAttribute('height', titlebarHeight.toString());
-    titlebar.setAttribute('fill', '#23272e');
-    titlebar.setAttribute('rx', '12');
-    titlebar.setAttribute('ry', '12');
-    nodeElement.appendChild(titlebar);
-    // 节点主体
+    // Node body
     const rect = new VirtualNode('rect', `${nodeId}-rect`);
     rect.setAttribute('x', '0');
     rect.setAttribute('y', titlebarHeight.toString());
@@ -242,7 +232,7 @@ export class SvgRenderer {
     rect.setAttribute('stroke-width', '2.5');
     rect.setAttribute('filter', 'drop-shadow(0 2px 8px rgba(0,0,0,0.4))');
     nodeElement.appendChild(rect);
-    // 节点标题
+    // Node title
     const text = new VirtualNode('text', `${nodeId}-text`);
     text.setAttribute('x', (width / 2).toString());
     text.setAttribute('y', (titlebarHeight / 2 + 2).toString());
@@ -270,16 +260,16 @@ export class SvgRenderer {
   private createPortElement(port: Port, type: 'input' | 'output', y: number): SVGElement {
     const portElement = new VirtualNode('g', `port-${port.getId()}`);
     portElement.setAttribute('id', `port-${port.getId()}`);
-    // 端口在节点内部，y 需加 titlebarHeight
+    // Port is inside node, y needs to add titlebarHeight
     const titlebarHeight = 32;
     const width = 220;
     const portY = y + titlebarHeight;
     const portX = type === 'input' ? 16 : width - 16;
     portElement.setAttribute('transform', `translate(${portX}, ${portY})`);
-    // 端口颜色
+    // Port color
     const color = type === 'input' ? '#ffd600' : '#b388ff';
     const colorDark = type === 'input' ? '#c7a500' : '#7c43bd';
-    // 端口圆点（缩小）
+    // Port dot (scaled down)
     const circle = new VirtualNode('circle', `${port.getId()}-circle`);
     circle.setAttribute('cx', '0');
     circle.setAttribute('cy', '0');
@@ -289,7 +279,7 @@ export class SvgRenderer {
     circle.setAttribute('stroke-width', '2');
     circle.setAttribute('style', 'cursor:pointer; transition:stroke 0.2s;');
     portElement.appendChild(circle);
-    // hover 高亮
+    // Hover highlight
     setTimeout(() => {
       const el = portElement.getElement() as SVGElement;
       if (el) {
@@ -303,7 +293,7 @@ export class SvgRenderer {
         });
       }
     }, 0);
-    // 端口文本
+    // Port text
     const text = new VirtualNode('text', `${port.getId()}-text`);
     text.setAttribute('x', type === 'input' ? '12' : '-12');
     text.setAttribute('y', '2');
@@ -336,7 +326,7 @@ export class SvgRenderer {
 
   private createEdgeElement(edge: Edge): SVGElement {
     const edgeElement = new VirtualNode('path', edge.getId());
-    // 线颜色与端口一致
+    // Line color matches port
     const color = edge.getSourcePort().getType() === 'input' ? '#ffd600' : '#b388ff';
     edgeElement.setAttribute('stroke', color);
     edgeElement.setAttribute('stroke-width', '3.5');
@@ -356,7 +346,7 @@ export class SvgRenderer {
   private removeNode(nodeId: string): void {
     const nodeElement = this.nodeElements.get(nodeId);
     if (nodeElement) {
-      // 删除节点相关的所有端口元素
+      // Remove all port elements related to the node
       const node = this.editor.getNode(nodeId);
       if (node) {
         node.getInputs().forEach(port => {
@@ -375,7 +365,7 @@ export class SvgRenderer {
         });
       }
 
-      // 删除节点元素
+      // Remove node element
       nodeElement.remove();
       this.nodeElements.delete(nodeId);
     }
@@ -395,7 +385,7 @@ export class SvgRenderer {
       const { x, y } = node.getPosition();
       nodeElement.setAttribute('transform', `translate(${x}, ${y})`);
 
-      // 更新与该节点相关的所有连线
+      // Update all connections related to this node
       this.updateConnectedEdges(node);
     }
   }
@@ -461,17 +451,17 @@ export class SvgRenderer {
   }
 
   private getPortAbsolutePosition(nodePos: { x: number, y: number }, portElement: SVGElement, type: 'input' | 'output'): { x: number, y: number } {
-    // g的transform: translate(0, y)
+    // g's transform: translate(0, y)
     const transform = portElement.getAttribute('transform');
     let offsetY = 0;
     if (transform) {
       const match = transform.match(/translate\(0,\s*([\d.-]+)\)/);
       if (match) offsetY = parseFloat(match[1]);
     }
-    // 圆心坐标
+    // Circle center coordinates
     const circle = portElement.querySelector('circle');
     const cx = circle ? parseFloat(circle.getAttribute('cx') || '0') : 0;
-    // cy始终为0
+    // cy is always 0
     return {
       x: nodePos.x + cx,
       y: nodePos.y + offsetY
@@ -479,7 +469,7 @@ export class SvgRenderer {
   }
 
   public update(): void {
-    // 清除现有元素
+    // Clear existing elements
     this.nodeElements.forEach(element => element.remove());
     this.edgeElements.forEach(element => element.remove());
     this.portElements.forEach(element => element.remove());
@@ -488,7 +478,7 @@ export class SvgRenderer {
     this.edgeElements.clear();
     this.portElements.clear();
 
-    // 重新渲染
+    // Re-render
     this.render();
   }
 
@@ -497,7 +487,7 @@ export class SvgRenderer {
   }
 
   public destroy() {
-    // 清理资源
+    // Clean up resources
     this.nodeElements.clear();
     this.edgeElements.clear();
     this.portElements.clear();
@@ -508,7 +498,7 @@ export class SvgRenderer {
     const nodeElement = this.svg.querySelector(`#node-${node.getId()}`);
     if (nodeElement) {
       nodeElement.setAttribute('transform', `translate(${x}, ${y})`);
-      // 更新与该节点相关的所有边
+      // Update all edges related to this node
       const edges = this.editor.getEdges();
       edges.forEach(edge => {
         if (edge.getSourcePort().getNodeId() === node.getId() || edge.getTargetPort().getNodeId() === node.getId()) {
@@ -519,7 +509,7 @@ export class SvgRenderer {
   }
 
   private handleNodeMoved(node: Node, x: number, y: number): void {
-    // 更新与该节点相关的所有边
+    // Update all edges related to this node
     const edges = this.editor.getEdges();
     edges.forEach(edge => {
       if (edge.getSourcePort().getNodeId() === node.getId() || edge.getTargetPort().getNodeId() === node.getId()) {
@@ -541,9 +531,9 @@ export class SvgRenderer {
     };
   }
 
-  // 绘制网格背景
+  // Draw grid background
   private drawGrid() {
-    // 移除旧网格
+    // Remove old grid
     const oldGrid = this.svg.querySelector('#svg-bg-grid');
     if (oldGrid) oldGrid.remove();
     const grid = document.createElementNS('http://www.w3.org/2000/svg', 'g');

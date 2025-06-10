@@ -1,5 +1,3 @@
-import { Editor } from '@logic.js/editor';
-
 // 创建一个示例 JSON 数据
 export const sampleJSON = {
   id: 'test-graph',
@@ -12,12 +10,12 @@ export const sampleJSON = {
       x: 100,
       y: 100,
       inputs: [
-        { id: 'input1', name: 'Input 1', type: 'input', nodeId: 'node1' },
-        { id: 'input2', name: 'Input 2', type: 'input', nodeId: 'node1' }
+        { id: 'input1', name: 'Input 1', type: 'input' },
+        { id: 'input2', name: 'Input 2', type: 'input' }
       ],
       outputs: [
-        { id: 'output1', name: 'Output 1', type: 'output', nodeId: 'node1' },
-        { id: 'output2', name: 'Output 2', type: 'output', nodeId: 'node1' }
+        { id: 'output1', name: 'Output 1', type: 'output' },
+        { id: 'output2', name: 'Output 2', type: 'output' }
       ]
     },
     {
@@ -27,12 +25,12 @@ export const sampleJSON = {
       x: 300,
       y: 100,
       inputs: [
-        { id: 'input3', name: 'Input 1', type: 'input', nodeId: 'node2' },
-        { id: 'input4', name: 'Input 2', type: 'input', nodeId: 'node2' }
+        { id: 'input3', name: 'Input 1', type: 'input' },
+        { id: 'input4', name: 'Input 2', type: 'input' }
       ],
       outputs: [
-        { id: 'output3', name: 'Output 1', type: 'output', nodeId: 'node2' },
-        { id: 'output4', name: 'Output 2', type: 'output', nodeId: 'node2' }
+        { id: 'output3', name: 'Output 1', type: 'output' },
+        { id: 'output4', name: 'Output 2', type: 'output' }
       ]
     },
     {
@@ -42,13 +40,13 @@ export const sampleJSON = {
       x: 500,
       y: 100,
       inputs: [
-        { id: 'input5', name: 'Input 1', type: 'input', nodeId: 'node3' },
-        { id: 'input6', name: 'Input 2', type: 'input', nodeId: 'node3' },
-        { id: 'input7', name: 'Input 3', type: 'input', nodeId: 'node3' }
+        { id: 'input5', name: 'Input 1', type: 'input' },
+        { id: 'input6', name: 'Input 2', type: 'input' },
+        { id: 'input7', name: 'Input 3', type: 'input' }
       ],
       outputs: [
-        { id: 'output5', name: 'Output 1', type: 'output', nodeId: 'node3' },
-        { id: 'output6', name: 'Output 2', type: 'output', nodeId: 'node3' }
+        { id: 'output5', name: 'Output 1', type: 'output' },
+        { id: 'output6', name: 'Output 2', type: 'output' }
       ]
     },
     {
@@ -58,12 +56,12 @@ export const sampleJSON = {
       x: 700,
       y: 100,
       inputs: [
-        { id: 'input8', name: 'Input 1', type: 'input', nodeId: 'node4' },
-        { id: 'input9', name: 'Input 2', type: 'input', nodeId: 'node4' },
-        { id: 'input10', name: 'Input 3', type: 'input', nodeId: 'node4' }
+        { id: 'input8', name: 'Input 1', type: 'input' },
+        { id: 'input9', name: 'Input 2', type: 'input' },
+        { id: 'input10', name: 'Input 3', type: 'input' }
       ],
       outputs: [
-        { id: 'output7', name: 'Output 1', type: 'output', nodeId: 'node4' }
+        { id: 'output7', name: 'Output 1', type: 'output' }
       ]
     }
   ],

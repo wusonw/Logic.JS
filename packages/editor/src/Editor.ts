@@ -12,7 +12,7 @@ export class Editor extends Graph {
     super(data);
   }
 
-  // 拖拽相关方法
+  // Drag and drop related methods
   public startDrag(nodeId: string, x: number, y: number): void {
     this.dragNodeId = nodeId;
     this.dragStartX = x;
@@ -26,17 +26,17 @@ export class Editor extends Graph {
     const node = this.getNode(this.dragNodeId);
     if (!node) return;
 
-    // 计算相对位移
+    // Calculate relative displacement
     const dx = x - this.dragStartX;
     const dy = y - this.dragStartY;
     const { x: currentX, y: currentY } = node.getPosition();
     const newX = currentX + dx;
     const newY = currentY + dy;
 
-    // 直接调用 setPosition，让 Node 类来处理事件触发
+    // Directly call setPosition, let Node class handle event triggering
     node.setPosition(newX, newY);
 
-    // 更新拖拽起始点
+    // Update drag start point
     this.dragStartX = x;
     this.dragStartY = y;
   }
@@ -56,7 +56,7 @@ export class Editor extends Graph {
     return this.dragNodeId;
   }
 
-  // 连线相关方法
+  // Connection related methods
   public startConnection(portId: string): void {
     const port = this.getPort(portId);
     if (!port || port.getType() !== 'output') return;
@@ -79,13 +79,13 @@ export class Editor extends Graph {
 
     if (!sourcePort || !targetPort) return undefined;
 
-    // 检查端口类型是否匹配
+    // Check if port types match
     if (sourcePort.getType() === targetPort.getType()) return undefined;
 
-    // 创建新的边
+    // Create new edge
     const edge = this.addEdge(sourcePort, targetPort);
 
-    // 重置连线状态
+    // Reset connection state
     this.isPortConnecting = false;
     this.connectStartPortId = null;
     this.emit('connection:end');

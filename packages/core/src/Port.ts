@@ -21,8 +21,8 @@ export class Port extends EventEmitter<PortEvents> {
   private type: 'input' | 'output';
   private nodeId: string;
   private value: any;
-  private offsetX: number = 0;  // 相对于节点的 X 偏移
-  private offsetY: number = 0;  // 相对于节点的 Y 偏移
+  private offsetX: number = 0;  // X offset relative to node
+  private offsetY: number = 0;  // Y offset relative to node
 
   constructor(data: PortData) {
     super();
@@ -32,11 +32,11 @@ export class Port extends EventEmitter<PortEvents> {
     this.nodeId = data.nodeId;
     this.value = data.value;
 
-    // 根据端口类型设置默认偏移
+    // Set default offset based on port type
     if (this.type === 'input') {
-      this.offsetX = -10;  // 输入端口在节点左侧
+      this.offsetX = -10;  // Input port on the left side of node
     } else {
-      this.offsetX = 10;   // 输出端口在节点右侧
+      this.offsetX = 10;   // Output port on the right side of node
     }
   }
 

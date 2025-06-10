@@ -28,10 +28,10 @@ if (!container) {
       x: 200,
       y: 200,
       inputs: [
-        { id: `${nodeId}-input`, name: 'Input', type: 'input', nodeId }
+        { id: `${nodeId}-input`, name: 'Input', type: 'input', }
       ],
       outputs: [
-        { id: `${nodeId}-output`, name: 'Output', type: 'output', nodeId }
+        { id: `${nodeId}-output`, name: 'Output', type: 'output', }
       ]
     })
     editor.addNode(node)
