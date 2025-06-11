@@ -1,19 +1,22 @@
 {
-  "name": "@logic.js/examples",
+  "name": "logic.js-examples",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@logic.js/core": "workspace:*",
-    "@logic.js/editor": "workspace:*"
+    "@logic.js/editor": "workspace:*",
+    "vue": "^3.4.15"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "vite": "^5.0.0"
+    "@vitejs/plugin-vue": "^5.0.3",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.12",
+    "vite-plugin-checker": "^0.6.4"
   }
 }
