@@ -1,4 +1,15 @@
-import { Graph, GraphData, Edge } from '@logic.js/core';
+import { Graph, GraphData, Edge, Node } from '@logic.js/core';
+import type { Plugin, HistoryAction } from './plugins';
+
+
+// Extend GraphEvents type
+declare module '@logic.js/core' {
+  interface GraphEvents {
+    'history:change': [{ action: HistoryAction; canUndo: boolean; canRedo: boolean }];
+    'node:dragstart': [node: Node];
+    'node:dragend': [node: Node];
+  }
+}
 
 export class Editor extends Graph {
   private isDragging: boolean = false;
@@ -7,9 +18,35 @@ export class Editor extends Graph {
   private dragStartY: number = 0;
   private isPortConnecting: boolean = false;
   private connectStartPortId: string | null = null;
+  private plugins: Map<string, Plugin> = new Map();
 
   constructor(data: GraphData) {
     super(data);
+  }
+
+  public use(plugin: Plugin): Editor {
+    if (this.plugins.has(plugin.name)) {
+      console.warn(`Plugin ${plugin.name} has already been installed.`);
+      return this;
+    }
+
+    plugin.install(this);
+    this.plugins.set(plugin.name, plugin);
+    return this;
+  }
+
+  public unuse(pluginName: string): void {
+    const plugin = this.plugins.get(pluginName);
+    if (plugin) {
+      if (plugin.destroy) {
+        plugin.destroy();
+      }
+      this.plugins.delete(pluginName);
+    }
+  }
+
+  public getPlugin<T extends Plugin>(pluginName: string): T | undefined {
+    return this.plugins.get(pluginName) as T | undefined;
   }
 
   // Drag and drop related methods
@@ -18,6 +55,11 @@ export class Editor extends Graph {
     this.dragStartX = x;
     this.dragStartY = y;
     this.isDragging = true;
+
+    const node = this.getNode(nodeId);
+    if (node) {
+      this.emit('node:dragstart', node);
+    }
   }
 
   public handleDrag(x: number, y: number): void {
@@ -42,6 +84,13 @@ export class Editor extends Graph {
   }
 
   public endDrag(): void {
+    if (this.isDragging && this.dragNodeId) {
+      const node = this.getNode(this.dragNodeId);
+      if (node) {
+        this.emit('node:dragend', node);
+      }
+    }
+
     this.isDragging = false;
     this.dragNodeId = null;
     this.dragStartX = 0;
@@ -108,6 +157,15 @@ export class Editor extends Graph {
   }
 
   public destroy(): void {
+    // Destroy all plugins
+    this.plugins.forEach(plugin => {
+      if (plugin.destroy) {
+        plugin.destroy();
+      }
+    });
+    this.plugins.clear();
+
+    // Clear graph data
     this.nodes.clear();
     this.edges.clear();
   }
